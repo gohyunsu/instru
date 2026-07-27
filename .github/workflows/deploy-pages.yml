@@ -34,6 +34,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Build score library index
+        run: node scripts/build-score-index.js
       - uses: actions/upload-pages-artifact@v4
         with:
           path: .

@@ -1,10 +1,11 @@
 {
-  "name": "acapella-pitch",
-  "version": "0.1.0",
+  "name": "instru",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/app.js && node --check src/audio-engine.js && node --check src/music.js && node --check src/pitch-core.js && node --check src/pitch-graph.js && node --check src/pitch-processor.js"
+    "check": "node --check src/app.js && node --check src/audio-engine.js && node --check src/music.js && node --check src/musescore-parser.js && node --check src/pitch-core.js && node --check src/pitch-graph.js && node --check src/pitch-processor.js && node --check src/score-player.js && node --check src/zip.js && node --check scripts/build-score-index.js",
+    "scores:index": "node scripts/build-score-index.js"
   }
 }
