@@ -11,6 +11,8 @@ import {
 import { readMuseScoreFile } from "./musescore-parser.js";
 import { VerticalPitchGraph } from "./pitch-graph.js";
 import { PitchStabilizer } from "./pitch-stabilizer.js";
+import { LiveLyrics } from "./score-lyrics.js";
+import { LiveScoreNotation } from "./score-notation.js";
 import { MuseScorePlayer } from "./score-player.js";
 
 const elements = {
@@ -45,6 +47,12 @@ const elements = {
   replaceScoreButton: document.querySelector("#replaceScoreButton"),
   scoreTitle: document.querySelector("#scoreTitle"),
   scoreMeta: document.querySelector("#scoreMeta"),
+  scoreNotation: document.querySelector("#scoreNotation"),
+  scoreNotationCount: document.querySelector("#scoreNotationCount"),
+  scoreLyrics: document.querySelector("#scoreLyrics"),
+  scoreLyricsPart: document.querySelector("#scoreLyricsPart"),
+  scoreLyricsTrack: document.querySelector("#scoreLyricsTrack"),
+  scoreLyricsEmpty: document.querySelector("#scoreLyricsEmpty"),
   scorePlayButton: document.querySelector("#scorePlayButton"),
   playbackPulse: document.querySelector("#playbackPulse"),
   scoreProgress: document.querySelector("#scoreProgress"),
@@ -74,6 +82,7 @@ const state = {
   score: null,
   scoreLoading: false,
   scrubbing: false,
+  lyricPartId: null,
 };
 
 const audioEngine = new PitchAudioEngine(
@@ -82,6 +91,16 @@ const audioEngine = new PitchAudioEngine(
 );
 const tonePlayer = new ReferenceTonePlayer(handleToneState);
 const pitchStabilizer = new PitchStabilizer();
+const scoreNotation = new LiveScoreNotation(
+  elements.scoreNotation,
+  elements.scoreNotationCount,
+);
+const liveLyrics = new LiveLyrics({
+  panel: elements.scoreLyrics,
+  partLabel: elements.scoreLyricsPart,
+  track: elements.scoreLyricsTrack,
+  empty: elements.scoreLyricsEmpty,
+});
 const scorePlayer = new MuseScorePlayer({
   onStateChange: handleScorePlaybackState,
   onProgress: handleScoreProgress,
@@ -456,6 +475,11 @@ function setMode(mode) {
     } else {
       setStatus("파일 대기");
     }
+    if (state.score) {
+      const position = scorePlayer.currentPosition();
+      scoreNotation.render(position, true);
+      liveLyrics.render(position, true);
+    }
   } else {
     scorePlayer.pause();
     audioEngine.setProcessing(state.listening);
@@ -487,9 +511,89 @@ function scoreErrorMessage(error) {
   return messages[error?.message] ?? "악보를 읽지 못했습니다. 파일을 확인해주세요.";
 }
 
+function setLyricsPart(partId) {
+  const nextPartId = state.lyricPartId === partId ? null : partId;
+  state.lyricPartId = nextPartId;
+
+  for (const button of elements.partList.querySelectorAll(".part-toggle")) {
+    const selected = button.dataset.partId === nextPartId;
+    button.classList.toggle("is-lyric-source", selected);
+    button.setAttribute("aria-current", selected ? "true" : "false");
+  }
+
+  if (nextPartId) {
+    liveLyrics.setPart(nextPartId);
+    navigator.vibrate?.(12);
+  } else {
+    liveLyrics.clearPart();
+  }
+}
+
+function bindPartControl(button, part) {
+  const longPressDuration = 520;
+  let longPressTimer = null;
+  let longPressed = false;
+  let pointerOrigin = null;
+
+  const cancelLongPress = () => {
+    if (longPressTimer) {
+      window.clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  };
+
+  button.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+    longPressed = false;
+    pointerOrigin = { x: event.clientX, y: event.clientY };
+    longPressTimer = window.setTimeout(() => {
+      longPressTimer = null;
+      longPressed = true;
+      setLyricsPart(part.id);
+    }, longPressDuration);
+  });
+  button.addEventListener("pointermove", (event) => {
+    if (
+      pointerOrigin &&
+      Math.hypot(
+        event.clientX - pointerOrigin.x,
+        event.clientY - pointerOrigin.y,
+      ) > 10
+    ) {
+      cancelLongPress();
+    }
+  });
+  for (const eventName of ["pointerup", "pointercancel", "pointerleave"]) {
+    button.addEventListener(eventName, cancelLongPress);
+  }
+  button.addEventListener("contextmenu", (event) => event.preventDefault());
+  button.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && event.shiftKey) {
+      event.preventDefault();
+      setLyricsPart(part.id);
+    }
+  });
+  button.addEventListener("click", (event) => {
+    if (longPressed) {
+      event.preventDefault();
+      longPressed = false;
+      return;
+    }
+    const enabled = !button.classList.contains("is-enabled");
+    button.classList.toggle("is-enabled", enabled);
+    button.setAttribute("aria-pressed", String(enabled));
+    scorePlayer.setPartEnabled(part.id, enabled);
+    scoreNotation.setEnabledParts(scorePlayer.enabledParts);
+  });
+}
+
 function renderScore(score) {
   state.score = score;
+  state.lyricPartId = null;
   scorePlayer.load(score);
+  liveLyrics.setScore(score);
   elements.scoreTitle.textContent = score.title;
   elements.scoreMeta.textContent =
     `${score.parts.length}성부 · ${score.events.length.toLocaleString()}음 · ${formatTime(score.duration)}`;
@@ -506,18 +610,19 @@ function renderScore(score) {
     button.textContent = `${part.name} · ${part.noteCount}`;
     button.dataset.partId = part.id;
     button.setAttribute("aria-pressed", "true");
-    button.addEventListener("click", () => {
-      const enabled = !button.classList.contains("is-enabled");
-      button.classList.toggle("is-enabled", enabled);
-      button.setAttribute("aria-pressed", String(enabled));
-      scorePlayer.setPartEnabled(part.id, enabled);
-    });
+    button.setAttribute("aria-current", "false");
+    button.setAttribute(
+      "aria-label",
+      `${part.name}, 탭하여 켜기 또는 끄기, 길게 눌러 가사 선택`,
+    );
+    bindPartControl(button, part);
     elements.partList.append(button);
   }
 
   elements.scoreLibrary.hidden = true;
   elements.scoreImport.hidden = true;
   elements.scorePlayerPanel.hidden = false;
+  scoreNotation.setScore(score);
   setScoreMessage("");
   if (state.mode === "score") {
     setStatus("재생 준비");
@@ -589,7 +694,10 @@ function renderLibrary(scores) {
         if (!response.ok) {
           throw new Error("FETCH_FAILED");
         }
-        await loadScoreBytes(await response.arrayBuffer(), `${score.name}.${score.format}`);
+        await loadScoreBytes(
+          await response.arrayBuffer(),
+          score.fileName ?? `${score.name}.${score.format}`,
+        );
       } catch {
         setStatus("파일 확인", "error");
         setScoreMessage("보관된 악보를 불러오지 못했습니다.", true);
@@ -616,6 +724,9 @@ async function loadScoreLibrary() {
 
 function resetScoreSelection() {
   scorePlayer.stop();
+  scoreNotation.clear();
+  liveLyrics.clear();
+  state.lyricPartId = null;
   state.score = null;
   elements.scorePlayerPanel.hidden = true;
   elements.scoreLibrary.hidden = false;
@@ -660,6 +771,8 @@ function handleScoreProgress(position, duration) {
     elements.scoreCurrentTime.textContent = formatTime(position);
   }
   elements.scoreDuration.textContent = formatTime(duration);
+  scoreNotation.render(position);
+  liveLyrics.render(position);
 }
 
 function applyTheme(theme) {
@@ -673,6 +786,7 @@ function applyTheme(theme) {
     .querySelector('meta[name="theme-color"]')
     ?.setAttribute("content", theme === "dark" ? "#101512" : "#f3f1eb");
   graph.refreshTheme();
+  scoreNotation.refreshTheme();
 }
 
 function initializeTheme() {
@@ -733,9 +847,10 @@ elements.scoreProgress.addEventListener("pointerdown", () => {
 });
 elements.scoreProgress.addEventListener("input", () => {
   state.scrubbing = true;
-  elements.scoreCurrentTime.textContent = formatTime(
-    Number(elements.scoreProgress.value),
-  );
+  const position = Number(elements.scoreProgress.value);
+  elements.scoreCurrentTime.textContent = formatTime(position);
+  scoreNotation.render(position, true);
+  liveLyrics.render(position, true);
 });
 elements.scoreProgress.addEventListener("change", () => {
   scorePlayer.seek(Number(elements.scoreProgress.value));

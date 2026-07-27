@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildTempoMap,
   fractionToTicks,
+  isPercussionPartName,
   tickToSeconds,
 } from "../src/musescore-parser.js";
 
@@ -38,4 +39,10 @@ test("last tempo at a shared tick wins", () => {
   );
   assert.equal(tempoMap.length, 1);
   assert.equal(tempoMap[0].bpm, 60);
+});
+
+test("recognizes percussion parts that should not be played", () => {
+  assert.equal(isPercussionPartName("Percussion"), true);
+  assert.equal(isPercussionPartName("드럼"), true);
+  assert.equal(isPercussionPartName("Soprano", "voice.soprano"), false);
 });

@@ -1,11 +1,11 @@
 {
   "name": "instru",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/app.js && node --check src/audio-engine.js && node --check src/music.js && node --check src/musescore-parser.js && node --check src/pitch-core.js && node --check src/pitch-graph.js && node --check src/pitch-processor.js && node --check src/pitch-stabilizer.js && node --check src/score-player.js && node --check src/zip.js && node --check scripts/build-score-index.js",
+    "check": "node --check src/app.js && node --check src/audio-engine.js && node --check src/music.js && node --check src/musescore-parser.js && node --check src/pitch-core.js && node --check src/pitch-graph.js && node --check src/pitch-processor.js && node --check src/pitch-stabilizer.js && node --check src/score-lyrics.js && node --check src/score-metadata.js && node --check src/score-notation.js && node --check src/score-player.js && node --check src/zip.js && node --check scripts/build-score-index.js",
     "scores:index": "node scripts/build-score-index.js"
   }
 }

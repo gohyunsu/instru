@@ -160,6 +160,31 @@
             <button class="text-button" id="replaceScoreButton" type="button">교체</button>
           </header>
 
+          <section class="live-score" aria-labelledby="liveScoreTitle">
+            <div class="section-label">
+              <h2 id="liveScoreTitle">악보</h2>
+              <span id="scoreNotationCount">0성부</span>
+            </div>
+            <div
+              class="score-notation"
+              id="scoreNotation"
+              role="img"
+              aria-label="선택된 성부의 실시간 악보"
+            ></div>
+            <div class="score-lyrics" id="scoreLyrics" aria-hidden="true">
+              <div class="score-lyrics-inner">
+                <div class="score-lyrics-heading">
+                  <span>가사</span>
+                  <strong id="scoreLyricsPart"></strong>
+                </div>
+                <div class="score-lyrics-window">
+                  <div class="score-lyrics-track" id="scoreLyricsTrack"></div>
+                  <p class="score-lyrics-empty" id="scoreLyricsEmpty"></p>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <div class="playback-core">
             <div class="playback-pulse" id="playbackPulse" aria-hidden="true">
               <span></span><span></span><span></span><span></span><span></span>
@@ -186,6 +211,7 @@
           <section class="part-mixer" aria-labelledby="partMixerTitle">
             <div class="section-label">
               <h2 id="partMixerTitle">성부</h2>
+              <span>길게 눌러 가사</span>
             </div>
             <div class="part-list" id="partList"></div>
           </section>

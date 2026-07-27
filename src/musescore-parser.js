@@ -36,6 +36,9 @@ function directChild(element, tagName) {
 }
 
 function childText(element, tagName) {
+  if (!element) {
+    return "";
+  }
   return directChild(element, tagName)?.textContent?.trim() ?? "";
 }
 
@@ -112,6 +115,35 @@ export function tickToSeconds(tick, tempoMap, division) {
   return tempo.seconds + ((tick - tempo.tick) * 60) / (tempo.bpm * division);
 }
 
+export function isPercussionPartName(name, instrumentId = "") {
+  return /\b(percussion|drums?|drumset|drum kit)\b|타악|드럼/i.test(
+    `${name} ${instrumentId}`,
+  );
+}
+
+function staffClef(staff) {
+  const clef = staff?.getElementsByTagName("Clef")[0];
+  if (!clef) {
+    return null;
+  }
+  const type =
+    childText(clef, "concertClefType") ||
+    childText(clef, "transposingClefType");
+  if (type.startsWith("F")) {
+    return type.includes("8vb") ? "bass-8vb" : "bass";
+  }
+  if (type.startsWith("G")) {
+    if (type.includes("8vb")) {
+      return "treble-8vb";
+    }
+    if (type.includes("8va")) {
+      return "treble-8va";
+    }
+    return "treble";
+  }
+  return null;
+}
+
 function parseParts(scoreElement, staffElements) {
   const partElements = directChildren(scoreElement, "Part");
   let staffCursor = 0;
@@ -133,18 +165,32 @@ function parseParts(scoreElement, staffElements) {
     }
 
     const instrument = directChild(part, "Instrument");
+    const instrumentId = childText(instrument, "instrumentId");
     const rawName =
       childText(instrument, "longName") ||
       childText(part, "longName") ||
       childText(part, "trackName") ||
       childText(instrument, "trackName") ||
-      childText(instrument, "instrumentId") ||
+      instrumentId ||
       `성부 ${partIndex + 1}`;
 
     return {
       id: `part-${partIndex + 1}`,
       name: rawName.replace(/^.*\./, "").replaceAll("_", " "),
       staffIds,
+      clef:
+        staffIds
+          .map((staffId) =>
+            staffClef(
+              staffElements.find(
+                (staff) => staff.getAttribute("id") === staffId,
+              ),
+            ),
+          )
+          .find(Boolean) ?? null,
+      isPercussion:
+        isPercussionPartName(rawName, instrumentId) ||
+        childText(instrument, "useDrumset") === "1",
     };
   });
 }
@@ -229,11 +275,14 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
       id: `part-${index + 1}`,
       name: `성부 ${index + 1}`,
       staffIds: [staff.getAttribute("id") || String(index + 1)],
+      clef: staffClef(staff),
     }));
   }
 
   const events = [];
   const tempoEvents = [];
+  const measureMarkers = [];
+  const lyrics = [];
   const activeTies = new Map();
 
   for (let staffIndex = 0; staffIndex < staffElements.length; staffIndex += 1) {
@@ -245,7 +294,13 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
     let timeDenominator = 4;
     const measures = directChildren(staff, "Measure");
 
-    for (const measure of measures) {
+    for (
+      let measureIndex = 0;
+      measureIndex < measures.length;
+      measureIndex += 1
+    ) {
+      const measure = measures[measureIndex];
+      const currentMeasureStart = measureStart;
       const timeSignature = measure.getElementsByTagName("TimeSig")[0];
       if (timeSignature) {
         timeNumerator = Number(childText(timeSignature, "sigN")) || timeNumerator;
@@ -320,11 +375,41 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
             durationToTicks(item, division, measureTicks) * tupletFactor;
 
           if (item.tagName === "Chord") {
+            for (const [lyricIndex, lyric] of directChildren(
+              item,
+              "Lyrics",
+            ).entries()) {
+              const text = childText(lyric, "text")
+                .replace(/\s+/g, " ")
+                .trim();
+              if (!text) {
+                continue;
+              }
+              lyrics.push({
+                id: `lyric-${staffId}-${voiceIndex}-${measureIndex}-${lyrics.length}`,
+                startTick: cursor,
+                durationTicks,
+                partId: part.id,
+                measureIndex,
+                measureNumber:
+                  measure.getAttribute("no") || measureIndex + 1,
+                verse:
+                  Number(childText(lyric, "no")) ||
+                  Number(lyric.getAttribute("no")) ||
+                  lyricIndex,
+                syllabic: childText(lyric, "syllabic") || "single",
+                text,
+              });
+            }
+
             for (const note of directChildren(item, "Note")) {
               const midi = Number(childText(note, "pitch"));
               if (!Number.isFinite(midi)) {
                 continue;
               }
+              const tpcText = childText(note, "tpc");
+              const parsedTpc = tpcText === "" ? null : Number(tpcText);
+              const tpc = Number.isFinite(parsedTpc) ? parsedTpc : null;
 
               const tieKey = `${staffId}:${voiceIndex}:${midi}`;
               const tiedEvent = activeTies.get(tieKey);
@@ -347,6 +432,7 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
                     Math.min(1, (Number(childText(note, "velocity")) || 80) / 100),
                   ),
                   partId: part.id,
+                  tpc,
                 };
                 events.push(event);
                 if (tiedToNext) {
@@ -365,13 +451,15 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
         }
       }
 
-      measureStart += measureTicks;
-      measureStart = Math.max(measureStart, furthestCursor);
+      measureStart = Math.max(measureStart + measureTicks, furthestCursor);
+      if (staffIndex === 0) {
+        measureMarkers.push({
+          number: measure.getAttribute("no") || measureIndex + 1,
+          startTick: currentMeasureStart,
+          endTick: measureStart,
+        });
+      }
     }
-  }
-
-  if (!events.length) {
-    throw new Error("NO_PLAYABLE_NOTES");
   }
 
   const tempoMap = buildTempoMap(tempoEvents, division);
@@ -384,19 +472,54 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
     );
     event.durationSeconds = Math.max(0.035, endSeconds - event.startSeconds);
   }
-  events.sort((left, right) => left.startSeconds - right.startSeconds);
+  const percussionPartIds = new Set(
+    parts
+      .filter((part) => part.isPercussion)
+      .map((part) => part.id),
+  );
+  const playableEvents = events
+    .filter((event) => !percussionPartIds.has(event.partId))
+    .sort((left, right) => left.startSeconds - right.startSeconds);
+  if (!playableEvents.length) {
+    throw new Error("NO_PLAYABLE_NOTES");
+  }
+  const measures = measureMarkers.map((measure) => ({
+    ...measure,
+    startSeconds: tickToSeconds(measure.startTick, tempoMap, division),
+    endSeconds: tickToSeconds(measure.endTick, tempoMap, division),
+  }));
+  for (const lyric of lyrics) {
+    lyric.startSeconds = tickToSeconds(
+      lyric.startTick,
+      tempoMap,
+      division,
+    );
+    lyric.endSeconds = tickToSeconds(
+      lyric.startTick + lyric.durationTicks,
+      tempoMap,
+      division,
+    );
+  }
+  const playableLyrics = lyrics
+    .filter((lyric) => !percussionPartIds.has(lyric.partId))
+    .sort((left, right) => left.startSeconds - right.startSeconds);
 
   const duration = Math.max(
-    ...events.map((event) => event.startSeconds + event.durationSeconds),
+    ...playableEvents.map(
+      (event) => event.startSeconds + event.durationSeconds,
+    ),
   );
   if (duration > MAX_DURATION_SECONDS) {
     throw new Error("SCORE_TOO_LONG");
   }
 
   parts = parts
+    .filter((part) => !part.isPercussion)
     .map((part) => ({
       ...part,
-      noteCount: events.filter((event) => event.partId === part.id).length,
+      noteCount: playableEvents.filter(
+        (event) => event.partId === part.id,
+      ).length,
     }))
     .filter((part) => part.noteCount > 0);
 
@@ -405,7 +528,9 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
     sourceName: fallbackName,
     division,
     parts,
-    events,
+    events: playableEvents,
+    measures,
+    lyrics: playableLyrics,
     duration,
   };
 }

@@ -1,5 +1,8 @@
-import { readdir, stat, writeFile } from "node:fs/promises";
+import { readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { extname, join, parse, posix, relative } from "node:path";
+
+import { titleFromMuseScoreXml } from "../src/score-metadata.js";
+import { extractMuseScoreXml } from "../src/zip.js";
 
 const root = process.cwd();
 const scoreDirectory = join(root, "assets", "scores");
@@ -31,14 +34,23 @@ for (const absolutePath of files) {
     .split("\\")
     .join("/");
   const extension = extname(absolutePath).slice(1).toLowerCase();
+  const fileName = parse(absolutePath).base;
+  const bytes = await readFile(absolutePath);
+  const xml =
+    extension === "mscx"
+      ? new TextDecoder().decode(bytes)
+      : await extractMuseScoreXml(bytes);
 
   scores.push({
-    name: parse(absolutePath).name,
+    name: titleFromMuseScoreXml(xml, fileName),
+    fileName,
     path: posix.join(".", relativePath),
     format: extension,
     size: info.size,
   });
 }
+
+scores.sort((left, right) => left.name.localeCompare(right.name, "ko"));
 
 const manifest = {
   generatedAt: new Date().toISOString(),
