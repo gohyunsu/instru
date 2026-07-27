@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="목소리의 현재 음과 센트 편차를 실시간으로 보여주는 모바일 음정 도구"
+    />
+    <meta name="theme-color" content="#f3f1eb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#101512" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+    <title>Acapella · 실시간 음정</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>ACAPELLA</span>
+        </div>
+
+        <div class="topbar-actions">
+          <button
+            class="listening-status"
+            id="listeningStatus"
+            type="button"
+            aria-label="마이크 연결 상태"
+          >
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="statusLabel">연결 중</span>
+          </button>
+          <button class="icon-button" id="themeToggle" type="button" aria-label="다크 모드 켜기">
+            <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 15.4A8 8 0 0 1 8.6 4a8.1 8.1 0 1 0 11.4 11.4Z"></path>
+            </svg>
+            <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3.6"></circle>
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="pitch-summary" aria-labelledby="pitchNote">
+        <div class="note-line">
+          <span class="pitch-note" id="pitchNote">—</span>
+          <span class="solfege" id="solfege"></span>
+        </div>
+        <div class="deviation-line" id="deviationLine">
+          <span class="deviation-value" id="deviationValue">마이크 연결 중</span>
+          <span class="deviation-copy" id="deviationCopy"></span>
+        </div>
+        <p class="frequency" id="frequency">한 음을 편하게 길게 불러보세요</p>
+        <p class="sr-only" id="screenReaderStatus" aria-live="polite"></p>
+      </section>
+
+      <section class="pitch-graph" aria-labelledby="graphTitle">
+        <div class="graph-heading">
+          <h1 id="graphTitle">음정 흐름</h1>
+          <span>최근 8초</span>
+        </div>
+        <div class="deviation-axis" aria-hidden="true">
+          <span>−50¢ 낮음</span>
+          <span>정확</span>
+          <span>높음 +50¢</span>
+        </div>
+        <div class="graph-stage">
+          <canvas
+            id="pitchCanvas"
+            role="img"
+            aria-label="아래쪽이 현재이고 위쪽이 과거인 세로 음정 편차 그래프. 왼쪽은 낮음, 가운데는 정확, 오른쪽은 높음을 뜻합니다."
+          >
+            실시간 음정 편차 그래프
+          </canvas>
+          <span class="time-label time-label-past" aria-hidden="true">8초 전</span>
+          <span class="time-label time-label-now" aria-hidden="true">지금</span>
+          <div class="graph-empty" id="graphEmpty">
+            <span class="empty-line" aria-hidden="true"></span>
+            <span id="graphEmptyText">마이크 연결 후<br />여기에 흐름이 나타납니다</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="reference-section" aria-labelledby="referenceTitle">
+        <div class="section-label">
+          <h2 id="referenceTitle">기준음</h2>
+          <span>눌러서 듣기</span>
+        </div>
+        <div class="reference-notes" id="referenceNotes">
+          <button class="note-button" type="button" data-offset="-1" aria-label="한 반음 낮은 기준음 재생">
+            <span class="note-button-label">G♯4</span>
+          </button>
+          <button class="note-button is-current" type="button" data-offset="0" aria-label="현재 기준음 재생">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M5.5 3.5v9l7-4.5-7-4.5Z"></path>
+            </svg>
+            <span class="note-button-label">A4</span>
+          </button>
+          <button class="note-button" type="button" data-offset="1" aria-label="한 반음 높은 기준음 재생">
+            <span class="note-button-label">A♯4</span>
+          </button>
+        </div>
+      </section>
+
+      <footer class="controls">
+        <p class="helper-message" id="helperMessage">
+          마이크 연결 중 · 오디오는 저장하지 않습니다
+        </p>
+      </footer>
+    </main>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>

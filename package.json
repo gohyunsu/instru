@@ -1,0 +1,10 @@
+{
+  "name": "acapella-pitch",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check src/app.js && node --check src/audio-engine.js && node --check src/music.js && node --check src/pitch-core.js && node --check src/pitch-graph.js && node --check src/pitch-processor.js"
+  }
+}
