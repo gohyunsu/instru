@@ -6,9 +6,11 @@ import {
   frequencyToMidi,
   measurementFromMidi,
   midiToFrequency,
+  midiToNote,
 } from "./music.js";
 import { readMuseScoreFile } from "./musescore-parser.js";
 import { VerticalPitchGraph } from "./pitch-graph.js";
+import { PitchStabilizer } from "./pitch-stabilizer.js";
 import { MuseScorePlayer } from "./score-player.js";
 
 const elements = {
@@ -21,11 +23,12 @@ const elements = {
   pitchSummary: document.querySelector("#pitchSummary"),
   pitchGraph: document.querySelector("#pitchGraph"),
   pitchNote: document.querySelector("#pitchNote"),
-  solfege: document.querySelector("#solfege"),
+  pitchLetter: document.querySelector("#pitchLetter"),
+  pitchOctave: document.querySelector("#pitchOctave"),
   deviationLine: document.querySelector("#deviationLine"),
   deviationValue: document.querySelector("#deviationValue"),
   deviationCopy: document.querySelector("#deviationCopy"),
-  frequency: document.querySelector("#frequency"),
+  pitchMessage: document.querySelector("#pitchMessage"),
   screenReaderStatus: document.querySelector("#screenReaderStatus"),
   canvas: document.querySelector("#pitchCanvas"),
   graphEmpty: document.querySelector("#graphEmpty"),
@@ -59,8 +62,7 @@ const state = {
   playingTone: false,
   activeToneButton: null,
   referenceMidi: 69,
-  recentMidi: [],
-  smoothedMidi: null,
+  currentMidi: null,
   lastVoicedAt: 0,
   lastAnnouncementAt: 0,
   waitingTimer: null,
@@ -79,15 +81,11 @@ const audioEngine = new PitchAudioEngine(
   handleStreamEnded,
 );
 const tonePlayer = new ReferenceTonePlayer(handleToneState);
+const pitchStabilizer = new PitchStabilizer();
 const scorePlayer = new MuseScorePlayer({
   onStateChange: handleScorePlaybackState,
   onProgress: handleScoreProgress,
 });
-
-function median(values) {
-  const ordered = [...values].sort((left, right) => left - right);
-  return ordered[Math.floor(ordered.length / 2)];
-}
 
 function formatTime(seconds) {
   const safeSeconds = Math.max(0, Math.floor(seconds || 0));
@@ -144,19 +142,20 @@ function updateAccuracyEffect(cents, now) {
   }
 }
 
-function resetPitchSummary(message = "한 음을 편하게 길게 불러보세요") {
+function resetPitchSummary(message = "한 음을 길게") {
   state.exactSince = null;
   setAccuracyLocked(false);
-  elements.pitchNote.textContent = "—";
-  elements.solfege.textContent = "";
+  elements.pitchNote.setAttribute("aria-label", "음정 대기");
+  elements.pitchLetter.textContent = "—";
+  elements.pitchOctave.textContent = "";
   elements.deviationValue.textContent = state.listening
-    ? "소리를 기다리는 중"
+    ? "대기 중"
     : state.starting
-      ? "마이크 연결 중"
-      : "연결을 확인해주세요";
+      ? "연결 중"
+      : "연결 필요";
   elements.deviationCopy.textContent = "";
   elements.deviationLine.dataset.direction = "";
-  elements.frequency.textContent = message;
+  elements.pitchMessage.textContent = message;
 }
 
 function updateReferenceButtons(midi = state.referenceMidi) {
@@ -165,8 +164,10 @@ function updateReferenceButtons(midi = state.referenceMidi) {
   for (const button of elements.referenceButtons) {
     const offset = Number(button.dataset.offset);
     const noteMidi = state.referenceMidi + offset;
+    const note = midiToNote(noteMidi);
     button.dataset.midi = String(noteMidi);
-    button.querySelector(".note-button-label").textContent = formatNote(noteMidi);
+    button.querySelector(".note-button-name").textContent = note.name;
+    button.querySelector(".note-button-octave").textContent = note.octave;
     button.classList.toggle("is-current", offset === 0);
     button.setAttribute("aria-label", `${formatNote(noteMidi)} 기준음 재생`);
   }
@@ -174,15 +175,18 @@ function updateReferenceButtons(midi = state.referenceMidi) {
 
 function showMeasurement(measurement, confidence) {
   const description = describeCents(measurement.cents);
-  elements.pitchNote.textContent = measurement.label;
-  elements.solfege.textContent = measurement.solfege;
+  elements.pitchNote.setAttribute("aria-label", measurement.label);
+  elements.pitchLetter.textContent = measurement.name;
+  elements.pitchOctave.textContent = measurement.octave;
   elements.deviationValue.textContent = formatCents(measurement.cents);
   elements.deviationCopy.textContent =
     description.direction === "exact"
-      ? description.label
-      : `${description.symbol} ${description.label}`;
+      ? "정확"
+      : description.direction === "high"
+        ? "높음"
+        : "낮음";
   elements.deviationLine.dataset.direction = description.direction;
-  elements.frequency.textContent = "가장 가까운 반음 기준";
+  elements.pitchMessage.textContent = "";
   elements.graphEmpty.classList.add("is-hidden");
   updateReferenceButtons(measurement.midi);
 
@@ -213,12 +217,12 @@ function markWaiting() {
   }
 
   state.waitingTimer = null;
-  if (state.smoothedMidi === null) {
+  if (state.currentMidi === null) {
     return;
   }
 
-  state.recentMidi = [];
-  state.smoothedMidi = null;
+  state.currentMidi = null;
+  pitchStabilizer.reset();
   graph.addGap();
   resetPitchSummary();
 }
@@ -243,18 +247,19 @@ function handleAudioMeasurement({ frequency, confidence = 0, rms = 0 }) {
   window.clearTimeout(state.waitingTimer);
   state.waitingTimer = null;
   state.lastVoicedAt = performance.now();
-  state.recentMidi.push(midi);
-  if (state.recentMidi.length > 5) {
-    state.recentMidi.shift();
+  const stabilized = pitchStabilizer.update(midi);
+  if (!stabilized) {
+    return;
   }
-
-  const stableMidi = median(state.recentMidi);
-  state.smoothedMidi =
-    state.smoothedMidi === null
-      ? stableMidi
-      : state.smoothedMidi * 0.62 + stableMidi * 0.38;
-
-  showMeasurement(measurementFromMidi(state.smoothedMidi), confidence);
+  state.currentMidi = stabilized.midi;
+  showMeasurement(
+    measurementFromMidi(
+      stabilized.midi,
+      undefined,
+      stabilized.noteMidi,
+    ),
+    confidence,
+  );
 }
 
 function handleToneState(playing) {
@@ -324,8 +329,8 @@ async function startListening() {
   state.starting = true;
   if (state.mode === "tuner") {
     setStatus("연결 중", "paused");
-    setHelper("브라우저의 마이크 권한을 허용해주세요.");
-    resetPitchSummary("연결되면 자동으로 분석을 시작합니다");
+    setHelper("마이크 권한 필요");
+    resetPitchSummary("");
   }
 
   try {
@@ -335,10 +340,9 @@ async function startListening() {
     audioEngine.setProcessing(state.mode === "tuner");
     if (state.mode === "tuner") {
       setStatus("듣는 중", "listening");
-      setHelper("실시간 분석 중 · 오디오는 저장하지 않습니다");
+      setHelper("");
       resetPitchSummary();
-      elements.graphEmptyText.innerHTML =
-        "한 음을 길게 부르면<br />아래에서 위로 흐름이 쌓입니다";
+      elements.graphEmptyText.textContent = "한 음을 길게";
     }
     requestWakeLock();
   } catch (error) {
@@ -346,7 +350,7 @@ async function startListening() {
     if (state.mode === "tuner") {
       setStatus("다시 시도", "error");
       setHelper(microphoneErrorMessage(error), true);
-      resetPitchSummary("상단의 ‘다시 시도’를 눌러 연결할 수 있습니다");
+      resetPitchSummary("");
     }
   } finally {
     state.starting = false;
@@ -358,8 +362,8 @@ async function stopListening() {
   window.clearTimeout(state.waitingTimer);
   tonePlayer.stop();
   await audioEngine.stop();
-  state.recentMidi = [];
-  state.smoothedMidi = null;
+  state.currentMidi = null;
+  pitchStabilizer.reset();
   graph.clear();
   if (state.wakeLock) {
     state.wakeLock.release().catch(() => {});
@@ -368,8 +372,8 @@ async function stopListening() {
   elements.graphEmpty.classList.remove("is-hidden");
   if (state.mode === "tuner") {
     setStatus("연결 중", "paused");
-    setHelper("마이크 다시 연결 중 · 오디오는 저장하지 않습니다");
-    resetPitchSummary();
+    setHelper("");
+    resetPitchSummary("");
   }
 }
 

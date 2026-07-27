@@ -59,21 +59,24 @@
             <span></span><span></span><span></span>
           </div>
           <div class="note-line">
-            <span class="pitch-note" id="pitchNote">—</span>
-            <span class="solfege" id="solfege"></span>
+            <span class="pitch-note" id="pitchNote">
+              <span class="pitch-letter" id="pitchLetter">—</span>
+              <span class="pitch-octave" id="pitchOctave"></span>
+            </span>
           </div>
           <div class="deviation-line" id="deviationLine">
             <span class="deviation-value" id="deviationValue">마이크 연결 중</span>
             <span class="deviation-copy" id="deviationCopy"></span>
           </div>
-          <p class="frequency" id="frequency">한 음을 편하게 길게 불러보세요</p>
+          <p class="pitch-message" id="pitchMessage">한 음을 길게</p>
+          <p class="helper-message" id="helperMessage"></p>
           <p class="sr-only" id="screenReaderStatus" aria-live="polite"></p>
         </section>
 
         <section class="pitch-graph" id="pitchGraph" aria-labelledby="graphTitle">
           <div class="graph-heading">
-            <h1 id="graphTitle">반음에서의 편차</h1>
-            <span>최근 8초</span>
+            <h1 id="graphTitle">음정 흐름</h1>
+            <span>8초</span>
           </div>
           <div class="deviation-axis" aria-hidden="true">
             <span>낮음</span>
@@ -92,7 +95,7 @@
             <span class="time-label time-label-now" aria-hidden="true">지금</span>
             <div class="graph-empty" id="graphEmpty">
               <span class="empty-line" aria-hidden="true"></span>
-              <span id="graphEmptyText">마이크 연결 후<br />여기에 흐름이 나타납니다</span>
+              <span id="graphEmptyText">한 음을 길게</span>
             </div>
           </div>
         </section>
@@ -100,29 +103,28 @@
         <section class="reference-section" aria-labelledby="referenceTitle">
           <div class="section-label">
             <h2 id="referenceTitle">기준음</h2>
-            <span>반음 단위</span>
           </div>
           <div class="reference-notes" id="referenceNotes">
             <button class="note-button" type="button" data-offset="-1" aria-label="한 반음 낮은 기준음 재생">
-              <span class="note-button-label">G♯4</span>
+              <span class="note-button-label">
+                <span class="note-button-name">G♯</span><span class="note-button-octave">4</span>
+              </span>
             </button>
             <button class="note-button is-current" type="button" data-offset="0" aria-label="현재 기준음 재생">
               <svg viewBox="0 0 16 16" aria-hidden="true">
                 <path d="M5.5 3.5v9l7-4.5-7-4.5Z"></path>
               </svg>
-              <span class="note-button-label">A4</span>
+              <span class="note-button-label">
+                <span class="note-button-name">A</span><span class="note-button-octave">4</span>
+              </span>
             </button>
             <button class="note-button" type="button" data-offset="1" aria-label="한 반음 높은 기준음 재생">
-              <span class="note-button-label">A♯4</span>
+              <span class="note-button-label">
+                <span class="note-button-name">A♯</span><span class="note-button-octave">4</span>
+              </span>
             </button>
           </div>
         </section>
-
-        <footer class="controls">
-          <p class="helper-message" id="helperMessage">
-            마이크 연결 중 · 오디오는 저장하지 않습니다
-          </p>
-        </footer>
       </section>
 
       <section class="mode-view score-view" id="scoreView" hidden>
@@ -144,7 +146,7 @@
           </svg>
           <div>
             <h1>MuseScore 파일</h1>
-            <p>.mscz 또는 .mscx · 기기에서만 처리</p>
+            <p>.mscz · .mscx</p>
           </div>
           <button class="secondary-button" id="selectScoreButton" type="button">파일 선택</button>
         </section>
@@ -152,7 +154,6 @@
         <section class="score-player-panel" id="scorePlayerPanel" hidden>
           <header class="score-file-heading">
             <div>
-              <span>불러온 악보</span>
               <h1 id="scoreTitle">제목 없음</h1>
               <p id="scoreMeta"></p>
             </div>
@@ -185,12 +186,9 @@
           <section class="part-mixer" aria-labelledby="partMixerTitle">
             <div class="section-label">
               <h2 id="partMixerTitle">성부</h2>
-              <span>눌러서 켜기·끄기</span>
             </div>
             <div class="part-list" id="partList"></div>
           </section>
-
-          <p class="score-caveat">기본 음색으로 재생 · 반복기호와 고급 주법은 단순화됩니다</p>
         </section>
 
         <p class="score-message" id="scoreMessage" aria-live="polite"></p>

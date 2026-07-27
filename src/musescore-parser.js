@@ -134,10 +134,10 @@ function parseParts(scoreElement, staffElements) {
 
     const instrument = directChild(part, "Instrument");
     const rawName =
+      childText(instrument, "longName") ||
+      childText(part, "longName") ||
       childText(part, "trackName") ||
       childText(instrument, "trackName") ||
-      childText(part, "longName") ||
-      childText(instrument, "longName") ||
       childText(instrument, "instrumentId") ||
       `성부 ${partIndex + 1}`;
 
@@ -179,14 +179,30 @@ function hasTiePrevious(note) {
 
 function scoreTitle(scoreElement, fallbackName) {
   const titleNames = ["workTitle", "movementTitle"];
+  const genericTitles = new Set([
+    "이름 없는 악보",
+    "untitled score",
+    "untitled",
+  ]);
+
   for (const name of titleNames) {
     const meta = [...scoreElement.getElementsByTagName("metaTag")].find(
       (candidate) => candidate.getAttribute("name") === name,
     );
-    if (meta?.textContent?.trim()) {
-      return meta.textContent.trim();
+    const value = meta?.textContent?.trim();
+    if (value && !genericTitles.has(value.toLowerCase())) {
+      return value;
     }
   }
+
+  const titleText = [...scoreElement.getElementsByTagName("Text")].find(
+    (textElement) => childText(textElement, "style") === "title",
+  );
+  const visibleTitle = titleText ? childText(titleText, "text") : "";
+  if (visibleTitle) {
+    return visibleTitle.replace(/\s+/g, " ").trim();
+  }
+
   return fallbackName.replace(/\.(mscz|mscx)$/i, "") || "제목 없음";
 }
 
@@ -282,6 +298,17 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
                 bpm: beatsPerSecond * 60,
               });
             }
+            continue;
+          }
+
+          if (item.tagName === "location") {
+            const fractionTicks = fractionToTicks(
+              childText(item, "fractions"),
+              division,
+            );
+            const measureOffset = Number(childText(item, "measures")) || 0;
+            cursor +=
+              (fractionTicks ?? 0) + measureOffset * measureTicks;
             continue;
           }
 

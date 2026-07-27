@@ -246,17 +246,17 @@ button:focus-visible {
 
 .tuner-view {
   display: grid;
-  grid-template-rows: auto minmax(270px, 1fr) auto auto;
+  grid-template-rows: auto minmax(270px, 1fr) auto;
   gap: 12px;
 }
 
 .pitch-summary {
   position: relative;
   display: grid;
-  min-height: 122px;
+  min-height: 114px;
   align-content: center;
   justify-items: center;
-  padding: 4px 12px 6px;
+  padding: 2px 12px 4px;
   text-align: center;
 }
 
@@ -306,25 +306,32 @@ button:focus-visible {
 }
 
 .note-line {
-  min-height: 68px;
+  min-height: 72px;
   justify-content: center;
-  gap: 10px;
 }
 
 .pitch-note {
-  font-size: clamp(58px, 17vw, 78px);
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: center;
   font-weight: 510;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.055em;
   line-height: 0.95;
 }
 
-.solfege {
-  align-self: flex-end;
-  margin-bottom: 8px;
+.pitch-letter {
+  font-size: clamp(68px, 20vw, 88px);
+  letter-spacing: -0.065em;
+}
+
+.pitch-octave {
+  min-width: 0.6em;
+  margin-top: 3px;
+  margin-left: 5px;
   color: var(--muted);
-  font-size: 14px;
-  font-weight: 650;
+  font-size: clamp(16px, 4.8vw, 21px);
+  font-weight: 620;
+  letter-spacing: -0.02em;
 }
 
 .deviation-line {
@@ -358,13 +365,17 @@ button:focus-visible {
   color: var(--high);
 }
 
-.frequency {
-  min-height: 18px;
-  margin: 2px 0 0;
+.pitch-message {
+  margin: 1px 0 0;
   color: var(--muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
+  font-size: 11px;
   line-height: 1.5;
+}
+
+.pitch-message:empty,
+.helper-message:empty,
+.score-message:empty {
+  display: none;
 }
 
 .pitch-graph {
@@ -534,10 +545,17 @@ button:focus-visible {
   fill: currentColor;
 }
 
-.controls {
-  display: grid;
-  min-height: 16px;
-  align-items: center;
+.note-button-label {
+  display: inline-flex;
+  align-items: flex-start;
+  line-height: 1;
+}
+
+.note-button-octave {
+  margin-top: -1px;
+  margin-left: 2px;
+  font-size: 9px;
+  font-weight: 620;
 }
 
 .score-view {
@@ -711,12 +729,6 @@ button:focus-visible {
   min-width: 0;
 }
 
-.score-file-heading span {
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 620;
-}
-
 .score-file-heading h1,
 .score-file-heading p {
   overflow: hidden;
@@ -726,7 +738,6 @@ button:focus-visible {
 }
 
 .score-file-heading h1 {
-  margin-top: 4px;
   font-size: 18px;
   font-weight: 720;
   letter-spacing: -0.025em;
@@ -901,7 +912,6 @@ button:focus-visible {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.score-caveat,
 .score-message {
   margin: 0;
   color: var(--muted);
@@ -915,8 +925,7 @@ button:focus-visible {
 }
 
 .helper-message {
-  min-height: 15px;
-  margin: 0;
+  margin: 2px 0 0;
   color: var(--muted);
   font-size: 10px;
   line-height: 1.4;
@@ -979,7 +988,7 @@ button:focus-visible {
   }
 
   .tuner-view {
-    grid-template-rows: auto minmax(230px, 1fr) auto auto;
+    grid-template-rows: auto minmax(230px, 1fr) auto;
     gap: 8px;
   }
 
@@ -991,7 +1000,7 @@ button:focus-visible {
     min-height: 57px;
   }
 
-  .pitch-note {
+  .pitch-letter {
     font-size: 56px;
   }
 

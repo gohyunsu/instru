@@ -1,4 +1,29 @@
 {
-  "generatedAt": "2026-07-27T14:51:48.794Z",
-  "scores": []
+  "generatedAt": "2026-07-27T15:26:17.262Z",
+  "scores": [
+    {
+      "name": "and-july",
+      "path": "assets/scores/and-july.mscz",
+      "format": "mscz",
+      "size": 244931
+    },
+    {
+      "name": "candy",
+      "path": "assets/scores/candy.mscz",
+      "format": "mscz",
+      "size": 266876
+    },
+    {
+      "name": "dumdi",
+      "path": "assets/scores/dumdi.mscz",
+      "format": "mscz",
+      "size": 328562
+    },
+    {
+      "name": "heal-the-world",
+      "path": "assets/scores/heal-the-world.mscz",
+      "format": "mscz",
+      "size": 277996
+    }
+  ]
 }

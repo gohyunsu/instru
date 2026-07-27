@@ -59,8 +59,12 @@ export function formatNote(midi) {
   return `${note.name}${note.octave}`;
 }
 
-export function measurementFromMidi(midi, concertA = DEFAULT_CONCERT_A) {
-  const note = midiToNote(midi);
+export function measurementFromMidi(
+  midi,
+  concertA = DEFAULT_CONCERT_A,
+  targetMidi = Math.round(midi),
+) {
+  const note = midiToNote(targetMidi);
   const cents = (midi - note.midi) * 100;
 
   return {

@@ -30,6 +30,10 @@ test("measurement expresses pitch difference in cents", () => {
   const lowA = measurementFromMidi(68.8);
   assert.equal(lowA.label, "A4");
   assert.ok(Math.abs(lowA.cents + 20) < 0.0001);
+
+  const lockedA = measurementFromMidi(69.55, undefined, 69);
+  assert.equal(lockedA.label, "A4");
+  assert.ok(Math.abs(lockedA.cents - 55) < 0.0001);
 });
 
 test("cent descriptions are explicit", () => {

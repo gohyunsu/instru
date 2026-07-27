@@ -98,8 +98,8 @@ export class VerticalPitchGraph {
 
   drawGrid(colors, left, top, plotWidth, plotHeight) {
     const context = this.context;
-    const exactLeft = this.xForCents(-10, left, plotWidth);
-    const exactRight = this.xForCents(10, left, plotWidth);
+    const exactLeft = this.xForCents(-5, left, plotWidth);
+    const exactRight = this.xForCents(5, left, plotWidth);
 
     context.fillStyle = colors.accentSoft;
     context.fillRect(exactLeft, top, exactRight - exactLeft, plotHeight);
@@ -134,47 +134,87 @@ export class VerticalPitchGraph {
     const visible = this.points.filter(
       (point) => point.time >= now - HISTORY_MS && point.time <= now + 50,
     );
-    let previous = null;
+    const chunks = [];
+    let chunk = [];
 
     for (const point of visible) {
-      if (point.gap) {
-        previous = null;
-        continue;
+      const previous = chunk.at(-1);
+      const disconnected =
+        point.gap ||
+        (previous &&
+          (point.time - previous.time > MAX_GAP_MS ||
+            point.note !== previous.note));
+
+      if (disconnected) {
+        if (chunk.length > 1) {
+          chunks.push(chunk);
+        }
+        chunk = [];
+      }
+      if (!point.gap) {
+        chunk.push(point);
+      }
+    }
+    if (chunk.length > 1) {
+      chunks.push(chunk);
+    }
+
+    const pitchGradient = context.createLinearGradient(
+      left,
+      0,
+      left + plotWidth,
+      0,
+    );
+    pitchGradient.addColorStop(0, colors.low);
+    pitchGradient.addColorStop(0.42, colors.low);
+    pitchGradient.addColorStop(0.48, colors.accent);
+    pitchGradient.addColorStop(0.52, colors.accent);
+    pitchGradient.addColorStop(0.58, colors.high);
+    pitchGradient.addColorStop(1, colors.high);
+
+    for (const points of chunks) {
+      const mapped = points.map((point) => ({
+        x: this.xForCents(point.cents, left, plotWidth),
+        y: this.yForTime(point.time, now, top, plotHeight),
+      }));
+      const confidence =
+        points.reduce((sum, point) => sum + point.confidence, 0) /
+        points.length;
+      const newestAge = now - points.at(-1).time;
+      const ageAlpha = 0.32 + 0.68 * clamp(1 - newestAge / HISTORY_MS, 0, 1);
+
+      context.save();
+      context.globalAlpha = ageAlpha * clamp(confidence, 0.45, 1);
+      context.strokeStyle = pitchGradient;
+      context.lineWidth = 2.6;
+      context.lineCap = "round";
+      context.lineJoin = "round";
+      context.shadowBlur = 5;
+      context.shadowColor = colors.accentSoft;
+      context.beginPath();
+      context.moveTo(mapped[0].x, mapped[0].y);
+
+      if (mapped.length === 2) {
+        context.lineTo(mapped[1].x, mapped[1].y);
+      } else {
+        for (let index = 1; index < mapped.length - 1; index += 1) {
+          const current = mapped[index];
+          const next = mapped[index + 1];
+          const midpointX = (current.x + next.x) / 2;
+          const midpointY = (current.y + next.y) / 2;
+          context.quadraticCurveTo(
+            current.x,
+            current.y,
+            midpointX,
+            midpointY,
+          );
+        }
+        const last = mapped.at(-1);
+        context.quadraticCurveTo(last.x, last.y, last.x, last.y);
       }
 
-      const x = this.xForCents(point.cents, left, plotWidth);
-      const y = this.yForTime(point.time, now, top, plotHeight);
-
-      if (
-        previous &&
-        point.time - previous.time <= MAX_GAP_MS &&
-        point.note === previous.note
-      ) {
-        const previousX = this.xForCents(previous.cents, left, plotWidth);
-        const previousY = this.yForTime(previous.time, now, top, plotHeight);
-        const ageRatio = clamp(1 - (now - point.time) / HISTORY_MS, 0, 1);
-        const alpha = (0.22 + ageRatio * 0.78) * clamp(point.confidence, 0.35, 1);
-        const color =
-          Math.abs(point.cents) <= 5
-            ? colors.accent
-            : point.cents < 0
-              ? colors.low
-              : colors.high;
-
-        context.save();
-        context.globalAlpha = alpha;
-        context.beginPath();
-        context.strokeStyle = color;
-        context.lineWidth = 2.35;
-        context.lineCap = "round";
-        context.lineJoin = "round";
-        context.moveTo(previousX, previousY);
-        context.lineTo(x, y);
-        context.stroke();
-        context.restore();
-      }
-
-      previous = point;
+      context.stroke();
+      context.restore();
     }
 
     const latest = [...visible].reverse().find((point) => !point.gap);
