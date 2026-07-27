@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import {
   clefForEvents,
   noteSpelling,
+  positionForScrollLeft,
+  scrollLeftForPosition,
   staffStepForNote,
   visibleEvents,
 } from "../src/score-notation.js";
@@ -60,4 +62,10 @@ test("keeps held notes visible when their start is outside the window", () => {
     { startSeconds: 10, durationSeconds: 1 },
   ];
   assert.deepEqual(visibleEvents(events, 3, 8), events.slice(0, 2));
+});
+
+test("maps horizontal score exploration to playback time", () => {
+  assert.equal(scrollLeftForPosition(12.5), 800);
+  assert.equal(positionForScrollLeft(800, 20), 12.5);
+  assert.equal(positionForScrollLeft(5000, 20), 20);
 });

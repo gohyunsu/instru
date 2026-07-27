@@ -11,7 +11,10 @@ import {
 import { readMuseScoreFile } from "./musescore-parser.js";
 import { VerticalPitchGraph } from "./pitch-graph.js";
 import { PitchStabilizer } from "./pitch-stabilizer.js";
-import { LiveLyrics } from "./score-lyrics.js";
+import {
+  LiveLyrics,
+  measureIndexAtPosition,
+} from "./score-lyrics.js";
 import { LiveScoreNotation } from "./score-notation.js";
 import { MuseScorePlayer } from "./score-player.js";
 
@@ -49,6 +52,8 @@ const elements = {
   scoreMeta: document.querySelector("#scoreMeta"),
   scoreNotation: document.querySelector("#scoreNotation"),
   scoreNotationCount: document.querySelector("#scoreNotationCount"),
+  scoreMeasureInput: document.querySelector("#scoreMeasureInput"),
+  scoreMeasureTotal: document.querySelector("#scoreMeasureTotal"),
   scoreLyrics: document.querySelector("#scoreLyrics"),
   scoreLyricsPart: document.querySelector("#scoreLyricsPart"),
   scoreLyricsTrack: document.querySelector("#scoreLyricsTrack"),
@@ -105,6 +110,7 @@ const scorePlayer = new MuseScorePlayer({
   onStateChange: handleScorePlaybackState,
   onProgress: handleScoreProgress,
 });
+scoreNotation.setSeekHandler((position) => scorePlayer.seek(position));
 
 function formatTime(seconds) {
   const safeSeconds = Math.max(0, Math.floor(seconds || 0));
@@ -118,6 +124,67 @@ function formatFileSize(bytes) {
     return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   }
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function currentMeasure(position = 0) {
+  if (!state.score?.measures?.length) {
+    return null;
+  }
+  return state.score.measures[
+    measureIndexAtPosition(state.score.measures, position)
+  ];
+}
+
+function updateMeasureNavigation(position = 0) {
+  const measure = currentMeasure(position);
+  if (
+    !measure ||
+    document.activeElement === elements.scoreMeasureInput
+  ) {
+    return;
+  }
+  elements.scoreMeasureInput.value = String(measure.number);
+}
+
+function configureMeasureNavigation(score = null) {
+  const measures = score?.measures ?? [];
+  const numericNumbers = measures
+    .map((measure) => Number(measure.number))
+    .filter(Number.isFinite);
+  const firstNumber = numericNumbers[0] ?? 1;
+  const lastNumber = numericNumbers.at(-1) ?? measures.length;
+  elements.scoreMeasureInput.disabled = !measures.length;
+  elements.scoreMeasureInput.min = String(
+    Math.min(firstNumber, lastNumber),
+  );
+  elements.scoreMeasureInput.max = String(
+    Math.max(firstNumber, lastNumber),
+  );
+  elements.scoreMeasureInput.value = String(firstNumber);
+  elements.scoreMeasureTotal.textContent = `/ ${lastNumber || 0}`;
+}
+
+function jumpToMeasure() {
+  if (!state.score?.measures?.length) {
+    return;
+  }
+  const requested = Number(elements.scoreMeasureInput.value);
+  const measure =
+    state.score.measures.find(
+      (candidate) => Number(candidate.number) === requested,
+    ) ??
+    state.score.measures[
+      Math.max(0, Math.round(requested) - 1)
+    ];
+
+  if (!measure) {
+    updateMeasureNavigation(scorePlayer.currentPosition());
+    return;
+  }
+  scorePlayer.seek(measure.startSeconds);
+  scoreNotation.render(measure.startSeconds, true);
+  liveLyrics.render(measure.startSeconds, true);
+  elements.scoreMeasureInput.value = String(measure.number);
 }
 
 function setStatus(label, status = "ready") {
@@ -523,9 +590,11 @@ function setLyricsPart(partId) {
 
   if (nextPartId) {
     liveLyrics.setPart(nextPartId);
+    scoreNotation.setPart(nextPartId);
     navigator.vibrate?.(12);
   } else {
     liveLyrics.clearPart();
+    scoreNotation.setPart(null);
   }
 }
 
@@ -585,13 +654,13 @@ function bindPartControl(button, part) {
     button.classList.toggle("is-enabled", enabled);
     button.setAttribute("aria-pressed", String(enabled));
     scorePlayer.setPartEnabled(part.id, enabled);
-    scoreNotation.setEnabledParts(scorePlayer.enabledParts);
   });
 }
 
 function renderScore(score) {
   state.score = score;
   state.lyricPartId = null;
+  configureMeasureNavigation(score);
   scorePlayer.load(score);
   liveLyrics.setScore(score);
   elements.scoreTitle.textContent = score.title;
@@ -613,7 +682,7 @@ function renderScore(score) {
     button.setAttribute("aria-current", "false");
     button.setAttribute(
       "aria-label",
-      `${part.name}, 탭하여 켜기 또는 끄기, 길게 눌러 가사 선택`,
+      `${part.name}, 탭하여 소리 켜기 또는 끄기, 길게 눌러 악보와 가사 선택`,
     );
     bindPartControl(button, part);
     elements.partList.append(button);
@@ -728,6 +797,7 @@ function resetScoreSelection() {
   liveLyrics.clear();
   state.lyricPartId = null;
   state.score = null;
+  configureMeasureNavigation();
   elements.scorePlayerPanel.hidden = true;
   elements.scoreLibrary.hidden = false;
   elements.scoreImport.hidden = false;
@@ -773,6 +843,7 @@ function handleScoreProgress(position, duration) {
   elements.scoreDuration.textContent = formatTime(duration);
   scoreNotation.render(position);
   liveLyrics.render(position);
+  updateMeasureNavigation(position);
 }
 
 function applyTheme(theme) {
@@ -859,6 +930,14 @@ elements.scoreProgress.addEventListener("change", () => {
 elements.scoreProgress.addEventListener("pointerup", () => {
   scorePlayer.seek(Number(elements.scoreProgress.value));
   state.scrubbing = false;
+});
+elements.scoreMeasureInput.addEventListener("change", jumpToMeasure);
+elements.scoreMeasureInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    jumpToMeasure();
+    elements.scoreMeasureInput.blur();
+  }
 });
 
 document.addEventListener(

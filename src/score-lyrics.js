@@ -151,10 +151,16 @@ export class LiveLyrics {
     this.partId = partId;
     this.contextKey = "";
     this.partLabel.textContent = part.name;
-    this.allPartLyrics = uniqueLyrics(
+    const partLyrics = uniqueLyrics(
       (this.score.lyrics ?? [])
         .filter((lyric) => lyric.partId === partId)
         .sort((left, right) => left.startSeconds - right.startSeconds),
+    );
+    const displayedVerse = partLyrics.length
+      ? Math.min(...partLyrics.map((lyric) => lyric.verse ?? 0))
+      : 0;
+    this.allPartLyrics = partLyrics.filter(
+      (lyric) => (lyric.verse ?? 0) === displayedVerse,
     );
     this.panel.classList.add("is-visible");
     this.panel.setAttribute("aria-hidden", "false");
@@ -188,42 +194,33 @@ export class LiveLyrics {
       return;
     }
 
-    const lyricsByMeasure = new Map();
     for (const lyric of this.contextLyrics) {
-      if (!lyricsByMeasure.has(lyric.measureIndex)) {
-        lyricsByMeasure.set(lyric.measureIndex, []);
-      }
-      lyricsByMeasure.get(lyric.measureIndex).push(lyric);
-    }
-
-    for (const [measureIndex, lyrics] of lyricsByMeasure) {
-      const measure = document.createElement("span");
-      const distance = Math.abs(
-        measureIndex - context.currentMeasureIndex,
-      );
-      measure.className =
-        `lyric-measure${distance === 0 ? " is-current" : ""}${distance === 1 ? " is-near" : ""}`;
-      measure.dataset.measureIndex = String(measureIndex);
-
-      for (const lyric of lyrics) {
-        const token = document.createElement("span");
-        token.className = "lyric-token";
-        token.dataset.lyricId = lyric.id;
-        token.textContent = lyricTokenText(lyric);
-        measure.append(token);
-        this.tokenElements.set(lyric.id, token);
-      }
-      this.track.append(measure);
+      const token = document.createElement("span");
+      token.className = "lyric-token";
+      token.dataset.lyricId = lyric.id;
+      token.textContent = lyricTokenText(lyric);
+      this.track.append(token);
+      this.tokenElements.set(lyric.id, token);
     }
 
     this.track.classList.remove("is-entering");
     void this.track.offsetWidth;
     this.track.classList.add("is-entering");
 
-    const currentMeasure = this.track.querySelector(
-      `.lyric-measure[data-measure-index="${context.currentMeasureIndex}"]`,
+    const nearbyLyric =
+      this.contextLyrics.find(
+        (lyric) =>
+          lyric.startSeconds <= this.position &&
+          lyric.endSeconds >= this.position,
+      ) ??
+      this.contextLyrics.find(
+        (lyric) => lyric.startSeconds >= this.position,
+      ) ??
+      this.contextLyrics.at(-1);
+    const nearbyToken = this.tokenElements.get(
+      nearbyLyric?.id,
     );
-    this.scheduleScroll(currentMeasure, "smooth");
+    this.scheduleScroll(nearbyToken, "smooth");
   }
 
   scheduleScroll(element, behavior = "smooth") {

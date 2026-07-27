@@ -772,17 +772,16 @@ button:focus-visible {
 
 .score-notation {
   position: relative;
-  display: grid;
+  display: block;
   min-height: 112px;
-  max-height: min(31vh, 286px);
-  place-items: center;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  height: 112px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background:
-    linear-gradient(90deg, var(--accent-soft), transparent 34%),
-    var(--notation-paper);
+  background: var(--notation-paper);
   color: var(--notation-ink);
   scrollbar-color: var(--line-strong) transparent;
   scrollbar-width: thin;
@@ -792,8 +791,27 @@ button:focus-visible {
     border-color 180ms ease;
 }
 
+.score-notation.has-timeline {
+  background:
+    linear-gradient(
+      90deg,
+      transparent calc(50% - 9px),
+      var(--accent-soft) calc(50% - 9px),
+      var(--accent-soft) calc(50% + 9px),
+      transparent calc(50% + 9px)
+    ),
+    linear-gradient(
+      90deg,
+      transparent calc(50% - 0.5px),
+      var(--accent-line) calc(50% - 0.5px),
+      var(--accent-line) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)
+    ),
+    var(--notation-paper);
+}
+
 .score-notation::-webkit-scrollbar {
-  width: 4px;
+  height: 3px;
 }
 
 .score-notation::-webkit-scrollbar-thumb {
@@ -803,13 +821,16 @@ button:focus-visible {
 
 .notation-svg {
   display: block;
-  width: 100%;
-  align-self: start;
+  max-width: none;
   overflow: visible;
 }
 
 .notation-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
   margin: 0;
+  place-items: center;
   color: var(--muted);
   font-size: 11px;
 }
@@ -904,41 +925,68 @@ button:focus-visible {
 }
 
 .notation-event {
-  transition: opacity 120ms ease;
-}
-
-.notation-event.is-past {
-  opacity: 0.3;
+  transition: opacity 160ms ease;
 }
 
 .notation-event.is-active .notation-note-head {
   fill: var(--accent);
   stroke: var(--accent);
-  filter: drop-shadow(0 0 3px var(--accent));
 }
 
 .notation-event.is-active .notation-stem,
 .notation-event.is-active .notation-flag,
 .notation-event.is-active .notation-duration {
-  stroke: var(--accent);
+  stroke: color-mix(in srgb, var(--accent) 72%, var(--notation-ink));
 }
 
 .notation-event.is-active .notation-accidental {
   fill: var(--accent);
 }
 
-.notation-current-band {
-  fill: var(--accent-soft);
+.measure-navigation {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0 3px;
+  color: var(--muted);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
 }
 
-.notation-playhead {
-  stroke: var(--accent);
-  stroke-width: 1.25;
-  stroke-linecap: round;
+.measure-navigation label {
+  font-weight: 650;
 }
 
-.notation-playhead-marker {
-  fill: var(--accent);
+.measure-navigation input {
+  width: 46px;
+  height: 26px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  outline: none;
+  background: var(--surface-strong);
+  color: var(--ink);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 680;
+  text-align: center;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.measure-navigation input:focus {
+  border-color: var(--accent-line);
+}
+
+.measure-navigation input:disabled {
+  opacity: 0.4;
+}
+
+.measure-navigation input::-webkit-inner-spin-button {
+  margin: 0;
 }
 
 .score-lyrics {
@@ -1018,46 +1066,24 @@ button:focus-visible {
   min-width: 100%;
   min-height: 60px;
   align-items: center;
-  padding: 9px 28px;
+  gap: 8px;
+  padding: 9px 34px;
 }
 
 .score-lyrics-track.is-entering {
   animation: lyric-context-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.lyric-measure {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  flex: 0 0 auto;
-  padding: 5px 18px;
-  opacity: 0.34;
-  transition:
-    opacity 220ms ease,
-    transform 220ms ease;
-}
-
-.lyric-measure + .lyric-measure {
-  border-left: 1px solid var(--line);
-}
-
-.lyric-measure.is-near {
-  opacity: 0.62;
-}
-
-.lyric-measure.is-current {
-  opacity: 1;
-  transform: translateY(-1px);
-}
-
 .lyric-token {
   display: inline-block;
-  padding: 4px 2px;
+  flex: 0 0 auto;
+  padding: 5px 4px;
   border-radius: 7px;
   color: var(--ink);
   font-size: 14px;
   font-weight: 560;
   line-height: 1.2;
+  opacity: 0.82;
   white-space: nowrap;
   transition:
     color 180ms ease,
@@ -1067,17 +1093,15 @@ button:focus-visible {
 }
 
 .lyric-token.is-past {
-  opacity: 0.45;
+  opacity: 0.38;
 }
 
 .lyric-token.is-active {
-  padding-right: 6px;
-  padding-left: 6px;
   background: var(--accent-soft);
   color: var(--accent);
-  font-weight: 760;
+  font-weight: 700;
   opacity: 1;
-  transform: scale(1.07);
+  transform: scale(1.02);
 }
 
 .score-lyrics-empty {
@@ -1256,7 +1280,7 @@ button:focus-visible {
 }
 
 .part-toggle.is-lyric-source::after {
-  content: "가사";
+  content: "악보";
   padding: 2px 5px;
   border-radius: 999px;
   background: var(--accent);

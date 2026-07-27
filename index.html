@@ -163,14 +163,26 @@
           <section class="live-score" aria-labelledby="liveScoreTitle">
             <div class="section-label">
               <h2 id="liveScoreTitle">악보</h2>
-              <span id="scoreNotationCount">0성부</span>
+              <span id="scoreNotationCount">선택 없음</span>
             </div>
             <div
               class="score-notation"
               id="scoreNotation"
               role="img"
-              aria-label="선택된 성부의 실시간 악보"
+              aria-label="선택된 성부의 악보"
             ></div>
+            <div class="measure-navigation">
+              <label for="scoreMeasureInput">마디</label>
+              <input
+                id="scoreMeasureInput"
+                type="number"
+                min="1"
+                value="1"
+                inputmode="numeric"
+                disabled
+              />
+              <span id="scoreMeasureTotal">/ 0</span>
+            </div>
             <div class="score-lyrics" id="scoreLyrics" aria-hidden="true">
               <div class="score-lyrics-inner">
                 <div class="score-lyrics-heading">
@@ -211,7 +223,7 @@
           <section class="part-mixer" aria-labelledby="partMixerTitle">
             <div class="section-label">
               <h2 id="partMixerTitle">성부</h2>
-              <span>길게 눌러 가사</span>
+              <span>길게 눌러 악보 · 가사</span>
             </div>
             <div class="part-list" id="partList"></div>
           </section>

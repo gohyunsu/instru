@@ -1,11 +1,8 @@
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
-const WINDOW_PAST_SECONDS = 1.5;
-const WINDOW_FUTURE_SECONDS = 5.5;
-const STAFF_ROW_HEIGHT = 96;
+const STAFF_HEIGHT = 112;
 const STAFF_GAP = 8;
-const STAFF_LEFT = 52;
-const NOTE_AREA_LEFT = 96;
-const NOTE_AREA_RIGHT = 12;
+const PIXELS_PER_SECOND = 64;
+const EDGE_INSET = 48;
 
 const LETTER_INDEX = {
   C: 0,
@@ -148,6 +145,25 @@ export function visibleEvents(events, startSeconds, endSeconds) {
   );
 }
 
+export function scrollLeftForPosition(
+  position,
+  pixelsPerSecond = PIXELS_PER_SECOND,
+) {
+  return Math.max(0, Number(position) || 0) * pixelsPerSecond;
+}
+
+export function positionForScrollLeft(
+  scrollLeft,
+  duration,
+  pixelsPerSecond = PIXELS_PER_SECOND,
+) {
+  return clamp(
+    Math.max(0, Number(scrollLeft) || 0) / pixelsPerSecond,
+    0,
+    Math.max(0, Number(duration) || 0),
+  );
+}
+
 function createSvgElement(tagName, attributes = {}, text = "") {
   const element = document.createElementNS(SVG_NAMESPACE, tagName);
   for (const [name, value] of Object.entries(attributes)) {
@@ -175,24 +191,22 @@ function ledgerSteps(step) {
   return steps;
 }
 
-function abbreviatedName(name, maximum = 16) {
-  const normalized = String(name || "성부").trim();
-  return normalized.length > maximum
-    ? `${normalized.slice(0, maximum - 1)}…`
-    : normalized;
-}
-
 export class LiveScoreNotation {
-  constructor(container, countElement = null) {
+  constructor(container, countElement = null, { onSeek = null } = {}) {
     this.container = container;
     this.countElement = countElement;
+    this.onSeek = onSeek;
     this.score = null;
-    this.enabledParts = new Set();
+    this.partId = null;
     this.eventsByPart = new Map();
     this.clefs = new Map();
+    this.eventNodes = [];
+    this.activeNodes = new Set();
     this.position = 0;
-    this.lastRenderedPosition = null;
-    this.lastWidth = 0;
+    this.viewportWidth = 0;
+    this.scrollCommitTimer = null;
+    this.programmaticUntil = 0;
+    this.exploringUntil = 0;
 
     this.svg = createSvgElement("svg", {
       class: "notation-svg",
@@ -201,91 +215,138 @@ export class LiveScoreNotation {
     });
     this.empty = document.createElement("p");
     this.empty.className = "notation-empty";
-    this.empty.textContent = "성부를 선택하세요";
+    this.empty.textContent = "성부를 길게 선택";
     this.container.replaceChildren(this.svg, this.empty);
+
+    this.container.addEventListener("pointerdown", () => this.beginExploring(), {
+      passive: true,
+    });
+    this.container.addEventListener("wheel", () => this.beginExploring(), {
+      passive: true,
+    });
+    this.container.addEventListener("scroll", () => this.handleScroll(), {
+      passive: true,
+    });
 
     this.resizeObserver =
       typeof ResizeObserver === "undefined"
         ? null
-        : new ResizeObserver(() => this.render(this.position, true));
+        : new ResizeObserver(() => this.buildTimeline(true));
     this.resizeObserver?.observe(this.container);
-    this.updateCount();
+    this.updateLabel();
     this.updateVisibility();
   }
 
   setScore(score) {
     this.score = score;
+    this.partId = null;
     this.position = 0;
-    this.lastRenderedPosition = null;
-    this.enabledParts = new Set(score.parts.map((part) => part.id));
     this.eventsByPart = new Map();
     this.clefs = new Map();
 
     for (const part of score.parts) {
-      const events = score.events.filter((event) => event.partId === part.id);
+      const events = score.events
+        .filter((event) => event.partId === part.id)
+        .sort((left, right) => left.startSeconds - right.startSeconds);
       this.eventsByPart.set(part.id, events);
       this.clefs.set(part.id, part.clef || clefForEvents(events));
     }
 
-    this.updateCount();
+    this.svg.replaceChildren();
+    this.container.scrollLeft = 0;
+    this.updateLabel();
     this.updateVisibility();
-    this.render(0, true);
   }
 
   clear() {
+    window.clearTimeout(this.scrollCommitTimer);
     this.score = null;
-    this.enabledParts.clear();
+    this.partId = null;
     this.eventsByPart.clear();
     this.clefs.clear();
+    this.eventNodes = [];
+    this.activeNodes.clear();
     this.svg.replaceChildren();
     this.svg.removeAttribute("viewBox");
-    this.svg.style.height = "";
-    this.updateCount();
+    this.svg.style.width = "";
+    this.container.classList.remove("has-timeline");
+    this.container.scrollLeft = 0;
+    this.updateLabel();
     this.updateVisibility();
   }
 
-  setEnabledParts(parts) {
-    this.enabledParts = new Set(parts);
-    this.lastRenderedPosition = null;
-    this.updateCount();
+  setPart(partId) {
+    const exists = this.score?.parts.some((part) => part.id === partId);
+    this.partId = exists ? partId : null;
+    this.updateLabel();
     this.updateVisibility();
-    this.render(this.position, true);
+    this.buildTimeline(true);
+  }
+
+  setSeekHandler(handler) {
+    this.onSeek = handler;
   }
 
   refreshTheme() {
-    this.render(this.position, true);
+    // All notation colors come from CSS variables, so the SVG updates in place.
   }
 
-  updateCount() {
+  updateLabel() {
     if (!this.countElement) {
       return;
     }
-    const count = this.enabledParts.size;
-    this.countElement.textContent = count ? `${count}성부` : "선택 없음";
+    const part = this.score?.parts.find(
+      (candidate) => candidate.id === this.partId,
+    );
+    this.countElement.textContent = part?.name ?? "선택 없음";
   }
 
   updateVisibility() {
-    const hasParts = Boolean(this.score && this.enabledParts.size);
-    this.svg.hidden = !hasParts;
-    this.empty.hidden = hasParts;
+    const hasTimeline = Boolean(this.score && this.partId);
+    this.svg.hidden = !hasTimeline;
+    this.empty.hidden = hasTimeline;
+    this.container.classList.toggle("has-timeline", hasTimeline);
     if (!this.score) {
       this.empty.textContent = "악보 없음";
-    } else if (!hasParts) {
-      this.empty.textContent = "성부를 선택하세요";
+    } else if (!this.partId) {
+      this.empty.textContent = "성부를 길게 선택";
     }
   }
 
-  timeToX(time, windowStart, width) {
-    const plotWidth = Math.max(
-      1,
-      width - NOTE_AREA_LEFT - NOTE_AREA_RIGHT,
+  beginExploring() {
+    if (!this.partId) {
+      return;
+    }
+    this.programmaticUntil = 0;
+    this.exploringUntil = performance.now() + 1400;
+  }
+
+  handleScroll() {
+    if (
+      !this.score ||
+      !this.partId ||
+      performance.now() < this.programmaticUntil
+    ) {
+      return;
+    }
+
+    this.exploringUntil = performance.now() + 1400;
+    const position = positionForScrollLeft(
+      this.container.scrollLeft,
+      this.score.duration,
     );
-    const windowDuration =
-      WINDOW_PAST_SECONDS + WINDOW_FUTURE_SECONDS;
-    return (
-      NOTE_AREA_LEFT +
-      ((time - windowStart) / windowDuration) * plotWidth
-    );
+    this.position = position;
+    this.updateActiveNotes();
+    this.updateAriaLabel();
+
+    window.clearTimeout(this.scrollCommitTimer);
+    this.scrollCommitTimer = window.setTimeout(() => {
+      this.onSeek?.(position);
+    }, 120);
+  }
+
+  xForTime(time) {
+    return this.viewportWidth / 2 + scrollLeftForPosition(time);
   }
 
   noteY(event, clef, staffBottom) {
@@ -297,62 +358,139 @@ export class LiveScoreNotation {
     };
   }
 
-  renderStaff({
-    part,
-    rowIndex,
-    width,
-    windowStart,
-    windowEnd,
-    playheadX,
-  }) {
-    const rowTop = rowIndex * STAFF_ROW_HEIGHT;
-    const staffTop = rowTop + 35;
-    const staffBottom = staffTop + STAFF_GAP * 4;
-    const clef = this.clefs.get(part.id) ?? "treble";
-    const bassClef = clef.startsWith("bass");
-    const group = createSvgElement("g", {
-      class: "notation-staff",
-      "data-part-id": part.id,
+  renderEvent(event, clef, group, staffBottom) {
+    const startX = this.xForTime(event.startSeconds);
+    const endX = this.xForTime(
+      event.startSeconds + event.durationSeconds,
+    );
+    const { step, y, spelling } = this.noteY(event, clef, staffBottom);
+    const eventGroup = createSvgElement("g", {
+      class: "notation-event",
     });
 
-    group.append(
-      createSvgElement(
-        "text",
-        {
-          x: 10,
-          y: rowTop + 17,
-          class: "notation-part-name",
-        },
-        abbreviatedName(part.name),
-      ),
-      createSvgElement("rect", {
-        x: playheadX - 11,
-        y: rowTop + 4,
-        width: 22,
-        height: STAFF_ROW_HEIGHT - 8,
-        rx: 8,
-        class: "notation-current-band",
-      }),
-    );
-
-    if (rowIndex > 0) {
-      group.append(
+    if (endX > startX + 7) {
+      eventGroup.append(
         createSvgElement("line", {
-          x1: 10,
-          x2: width - 10,
-          y1: rowTop,
-          y2: rowTop,
-          class: "notation-row-separator",
+          x1: startX + 5,
+          x2: endX,
+          y1: y,
+          y2: y,
+          class: "notation-duration",
         }),
       );
     }
+
+    for (const ledgerStep of ledgerSteps(step)) {
+      const ledgerY = staffBottom - ledgerStep * (STAFF_GAP / 2);
+      eventGroup.append(
+        createSvgElement("line", {
+          x1: startX - 9,
+          x2: startX + 9,
+          y1: ledgerY,
+          y2: ledgerY,
+          class: "notation-ledger-line",
+        }),
+      );
+    }
+
+    if (spelling.symbol) {
+      eventGroup.append(
+        createSvgElement(
+          "text",
+          {
+            x: startX - 13,
+            y: y + 4,
+            class: "notation-accidental",
+            "text-anchor": "middle",
+          },
+          spelling.symbol,
+        ),
+      );
+    }
+
+    const quarterLength =
+      event.durationTicks / (this.score.division || 480);
+    const wholeNote = quarterLength >= 3.5;
+    const hollowNote = quarterLength >= 1.75;
+    eventGroup.append(
+      createSvgElement("ellipse", {
+        cx: startX,
+        cy: y,
+        rx: 5.6,
+        ry: 4,
+        transform: `rotate(-16 ${startX} ${y})`,
+        class: `notation-note-head${hollowNote ? " is-hollow" : ""}`,
+      }),
+    );
+
+    if (!wholeNote) {
+      const stemUp = step < 4;
+      const stemX = startX + (stemUp ? 5 : -5);
+      const stemEndY = y + (stemUp ? -24 : 24);
+      eventGroup.append(
+        createSvgElement("line", {
+          x1: stemX,
+          x2: stemX,
+          y1: y,
+          y2: stemEndY,
+          class: "notation-stem",
+        }),
+      );
+
+      const flagCount =
+        quarterLength < 0.375 ? 2 : quarterLength < 0.75 ? 1 : 0;
+      for (let flag = 0; flag < flagCount; flag += 1) {
+        const flagY = stemEndY + (stemUp ? flag * 6 : -flag * 6);
+        const direction = stemUp ? 1 : -1;
+        eventGroup.append(
+          createSvgElement("path", {
+            d: `M ${stemX} ${flagY} C ${stemX + 9} ${flagY + 3 * direction}, ${stemX + 9} ${flagY + 10 * direction}, ${stemX + 2} ${flagY + 14 * direction}`,
+            class: "notation-flag",
+          }),
+        );
+      }
+    }
+
+    group.append(eventGroup);
+    this.eventNodes.push({ event, element: eventGroup });
+  }
+
+  buildTimeline(preservePosition = false) {
+    if (!this.score || !this.partId) {
+      this.svg.replaceChildren();
+      return;
+    }
+
+    this.viewportWidth = Math.max(
+      280,
+      Math.round(this.container.clientWidth || 360),
+    );
+    const totalWidth =
+      this.viewportWidth +
+      scrollLeftForPosition(this.score.duration);
+    const staffTop = 41;
+    const staffBottom = staffTop + STAFF_GAP * 4;
+    const startX = this.viewportWidth / 2 - EDGE_INSET;
+    const endX =
+      this.viewportWidth / 2 +
+      scrollLeftForPosition(this.score.duration) +
+      EDGE_INSET;
+    const part = this.score.parts.find(
+      (candidate) => candidate.id === this.partId,
+    );
+    const clef = this.clefs.get(this.partId) ?? "treble";
+    const bassClef = clef.startsWith("bass");
+    const group = createSvgElement("g", {
+      class: "notation-staff",
+      "data-part-id": this.partId,
+    });
 
     for (let line = 0; line < 5; line += 1) {
       const y = staffTop + line * STAFF_GAP;
       group.append(
         createSvgElement("line", {
-          x1: STAFF_LEFT,
-          x2: width - NOTE_AREA_RIGHT,
+          x1: startX,
+          x2: endX,
           y1: y,
           y2: y,
           class: "notation-staff-line",
@@ -364,7 +502,7 @@ export class LiveScoreNotation {
       createSvgElement(
         "text",
         {
-          x: bassClef ? 60 : 58,
+          x: this.viewportWidth / 2 - 39,
           y: bassClef ? staffTop + 25 : staffTop + 31,
           class: `notation-clef notation-clef-${bassClef ? "bass" : "treble"}`,
         },
@@ -376,7 +514,7 @@ export class LiveScoreNotation {
         createSvgElement(
           "text",
           {
-            x: bassClef ? 70 : 69,
+            x: this.viewportWidth / 2 - 28,
             y: clef.endsWith("8vb") ? staffBottom + 10 : staffTop - 5,
             class: "notation-clef-octave",
             "text-anchor": "middle",
@@ -386,13 +524,8 @@ export class LiveScoreNotation {
       );
     }
 
-    const measures = (this.score.measures ?? []).filter(
-      (measure) =>
-        measure.startSeconds >= windowStart &&
-        measure.startSeconds <= windowEnd,
-    );
-    for (const measure of measures) {
-      const x = this.timeToX(measure.startSeconds, windowStart, width);
+    for (const measure of this.score.measures ?? []) {
+      const x = this.xForTime(measure.startSeconds);
       group.append(
         createSvgElement("line", {
           x1: x,
@@ -401,227 +534,106 @@ export class LiveScoreNotation {
           y2: staffBottom,
           class: "notation-measure-line",
         }),
+        createSvgElement(
+          "text",
+          {
+            x: x + 3,
+            y: staffTop - 8,
+            class: "notation-measure-number",
+          },
+          measure.number,
+        ),
       );
-      if (rowIndex === 0) {
-        group.append(
-          createSvgElement(
-            "text",
-            {
-              x: x + 3,
-              y: staffTop - 7,
-              class: "notation-measure-number",
-            },
-            measure.number,
-          ),
-        );
-      }
     }
 
-    const events = visibleEvents(
-      this.eventsByPart.get(part.id) ?? [],
-      windowStart,
-      windowEnd,
-    );
-    for (const event of events) {
-      this.renderEvent({
-        event,
-        clef,
-        group,
-        staffBottom,
-        width,
-        windowStart,
-        playheadX,
-      });
+    this.eventNodes = [];
+    this.activeNodes.clear();
+    for (const event of this.eventsByPart.get(this.partId) ?? []) {
+      this.renderEvent(event, clef, group, staffBottom);
     }
 
-    group.append(
-      createSvgElement("line", {
-        x1: playheadX,
-        x2: playheadX,
-        y1: rowTop + 4,
-        y2: rowTop + STAFF_ROW_HEIGHT - 7,
-        class: "notation-playhead",
-      }),
-      createSvgElement("path", {
-        d: `M ${playheadX - 4} ${rowTop + 4} L ${playheadX + 4} ${rowTop + 4} L ${playheadX} ${rowTop + 10} Z`,
-        class: "notation-playhead-marker",
-      }),
-    );
+    this.svg.setAttribute("viewBox", `0 0 ${totalWidth} ${STAFF_HEIGHT}`);
+    this.svg.setAttribute("width", totalWidth);
+    this.svg.setAttribute("height", STAFF_HEIGHT);
+    this.svg.style.width = `${totalWidth}px`;
+    this.svg.style.height = `${STAFF_HEIGHT}px`;
+    this.svg.replaceChildren(group);
+    this.updateActiveNotes();
+    this.updateAriaLabel(part);
 
-    return group;
+    if (preservePosition) {
+      this.scrollToPosition(this.position);
+    }
   }
 
-  renderEvent({
-    event,
-    clef,
-    group,
-    staffBottom,
-    width,
-    windowStart,
-  }) {
-    const startX = this.timeToX(event.startSeconds, windowStart, width);
-    const endX = this.timeToX(
-      event.startSeconds + event.durationSeconds,
-      windowStart,
-      width,
-    );
-    const { step, y, spelling } = this.noteY(event, clef, staffBottom);
-    const isActive =
-      event.startSeconds <= this.position + 0.015 &&
-      event.startSeconds + event.durationSeconds > this.position;
-    const isPast =
-      event.startSeconds + event.durationSeconds <= this.position;
-    const eventGroup = createSvgElement("g", {
-      class: `notation-event${isActive ? " is-active" : ""}${isPast ? " is-past" : ""}`,
-    });
-
-    const durationStart = clamp(
-      startX + 5,
-      NOTE_AREA_LEFT,
-      width - NOTE_AREA_RIGHT,
-    );
-    const durationEnd = clamp(
-      endX,
-      NOTE_AREA_LEFT,
-      width - NOTE_AREA_RIGHT,
-    );
-    if (durationEnd > durationStart + 2) {
-      eventGroup.append(
-        createSvgElement("line", {
-          x1: durationStart,
-          x2: durationEnd,
-          y1: y,
-          y2: y,
-          class: "notation-duration",
-        }),
-      );
-    }
-
-    if (
-      startX >= NOTE_AREA_LEFT - 10 &&
-      startX <= width - NOTE_AREA_RIGHT + 10
-    ) {
-      for (const ledgerStep of ledgerSteps(step)) {
-        const ledgerY = staffBottom - ledgerStep * (STAFF_GAP / 2);
-        eventGroup.append(
-          createSvgElement("line", {
-            x1: startX - 9,
-            x2: startX + 9,
-            y1: ledgerY,
-            y2: ledgerY,
-            class: "notation-ledger-line",
-          }),
-        );
+  updateActiveNotes() {
+    const nextActive = new Set();
+    for (const item of this.eventNodes) {
+      if (item.event.startSeconds > this.position + 0.02) {
+        break;
       }
-
-      if (spelling.symbol) {
-        eventGroup.append(
-          createSvgElement(
-            "text",
-            {
-              x: startX - 13,
-              y: y + 4,
-              class: "notation-accidental",
-              "text-anchor": "middle",
-            },
-            spelling.symbol,
-          ),
-        );
-      }
-
-      const quarterLength =
-        event.durationTicks / (this.score.division || 480);
-      const wholeNote = quarterLength >= 3.5;
-      const hollowNote = quarterLength >= 1.75;
-      eventGroup.append(
-        createSvgElement("ellipse", {
-          cx: startX,
-          cy: y,
-          rx: 5.6,
-          ry: 4,
-          transform: `rotate(-16 ${startX} ${y})`,
-          class: `notation-note-head${hollowNote ? " is-hollow" : ""}`,
-        }),
-      );
-
-      if (!wholeNote) {
-        const stemUp = step < 4;
-        const stemX = startX + (stemUp ? 5 : -5);
-        const stemEndY = y + (stemUp ? -24 : 24);
-        eventGroup.append(
-          createSvgElement("line", {
-            x1: stemX,
-            x2: stemX,
-            y1: y,
-            y2: stemEndY,
-            class: "notation-stem",
-          }),
-        );
-
-        const flagCount = quarterLength < 0.375 ? 2 : quarterLength < 0.75 ? 1 : 0;
-        for (let flag = 0; flag < flagCount; flag += 1) {
-          const flagY = stemEndY + (stemUp ? flag * 6 : -flag * 6);
-          const direction = stemUp ? 1 : -1;
-          eventGroup.append(
-            createSvgElement("path", {
-              d: `M ${stemX} ${flagY} C ${stemX + 9} ${flagY + 3 * direction}, ${stemX + 9} ${flagY + 10 * direction}, ${stemX + 2} ${flagY + 14 * direction}`,
-              class: "notation-flag",
-            }),
-          );
-        }
+      if (
+        item.event.startSeconds + item.event.durationSeconds >
+        this.position
+      ) {
+        nextActive.add(item.element);
       }
     }
 
-    group.append(eventGroup);
+    for (const element of this.activeNodes) {
+      if (!nextActive.has(element)) {
+        element.classList.remove("is-active");
+      }
+    }
+    for (const element of nextActive) {
+      if (!this.activeNodes.has(element)) {
+        element.classList.add("is-active");
+      }
+    }
+    this.activeNodes = nextActive;
+  }
+
+  updateAriaLabel(part = null) {
+    const selectedPart =
+      part ??
+      this.score?.parts.find((candidate) => candidate.id === this.partId);
+    if (!selectedPart) {
+      return;
+    }
+    this.container.setAttribute(
+      "aria-label",
+      `${selectedPart.name} 악보, ${Math.floor(this.position / 60)}분 ${Math.floor(this.position % 60)}초`,
+    );
+  }
+
+  scrollToPosition(position) {
+    const target = scrollLeftForPosition(position);
+    if (Math.abs(this.container.scrollLeft - target) < 0.5) {
+      return;
+    }
+    this.programmaticUntil = performance.now() + 140;
+    this.container.scrollLeft = target;
   }
 
   render(position = this.position, force = false) {
-    if (!this.score || !this.enabledParts.size) {
+    if (!this.score || !this.partId) {
       return;
     }
 
-    this.position = clamp(position || 0, 0, this.score.duration);
-    const width = Math.max(280, Math.round(this.container.clientWidth || 360));
-    if (
-      !force &&
-      this.lastRenderedPosition !== null &&
-      Math.abs(this.position - this.lastRenderedPosition) < 0.035 &&
-      width === this.lastWidth
-    ) {
+    this.position = clamp(
+      Number(position) || 0,
+      0,
+      this.score.duration,
+    );
+    if (force && !this.eventNodes.length) {
+      this.buildTimeline(true);
       return;
     }
-    this.lastRenderedPosition = this.position;
-    this.lastWidth = width;
 
-    const parts = this.score.parts.filter((part) =>
-      this.enabledParts.has(part.id),
-    );
-    const height = Math.max(STAFF_ROW_HEIGHT, parts.length * STAFF_ROW_HEIGHT);
-    const windowStart = this.position - WINDOW_PAST_SECONDS;
-    const windowEnd = this.position + WINDOW_FUTURE_SECONDS;
-    const playheadX = this.timeToX(this.position, windowStart, width);
-
-    this.svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    this.svg.setAttribute("width", width);
-    this.svg.setAttribute("height", height);
-    this.svg.style.height = `${height}px`;
-    this.svg.replaceChildren(
-      ...parts.map((part, rowIndex) =>
-        this.renderStaff({
-          part,
-          rowIndex,
-          width,
-          windowStart,
-          windowEnd,
-          playheadX,
-        }),
-      ),
-    );
-
-    const partNames = parts.map((part) => part.name).join(", ");
-    this.container.setAttribute(
-      "aria-label",
-      `${partNames} 실시간 악보, ${Math.floor(this.position / 60)}분 ${Math.floor(this.position % 60)}초`,
-    );
+    this.updateActiveNotes();
+    this.updateAriaLabel();
+    if (force || performance.now() >= this.exploringUntil) {
+      this.scrollToPosition(this.position);
+    }
   }
 }
