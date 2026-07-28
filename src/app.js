@@ -53,13 +53,16 @@ const elements = {
   scoreNotationCount: document.querySelector("#scoreNotationCount"),
   scoreMeasureInput: document.querySelector("#scoreMeasureInput"),
   scoreMeasureTotal: document.querySelector("#scoreMeasureTotal"),
-  playbackCore: document.querySelector("#playbackCore"),
   playbackVisualizer: document.querySelector("#playbackVisualizer"),
   scorePlayButton: document.querySelector("#scorePlayButton"),
   scoreProgress: document.querySelector("#scoreProgress"),
   scoreCurrentTime: document.querySelector("#scoreCurrentTime"),
   scoreDuration: document.querySelector("#scoreDuration"),
   partList: document.querySelector("#partList"),
+  selectedPartVolume: document.querySelector("#selectedPartVolume"),
+  selectedPartVolumeLabel: document.querySelector("#selectedPartVolumeLabel"),
+  selectedPartVolumeInput: document.querySelector("#selectedPartVolumeInput"),
+  selectedPartVolumeValue: document.querySelector("#selectedPartVolumeValue"),
   scoreMessage: document.querySelector("#scoreMessage"),
 };
 
@@ -113,7 +116,7 @@ elements.playbackVisualizer.replaceChildren(...visualizerBars);
 
 function renderPlaybackVisualizer() {
   const targets =
-    scorePlayer.playing && !state.selectedPartId
+    scorePlayer.playing
       ? scorePlayer.visualizationLevels(visualizerBars.length)
       : silentVisualizerLevels;
 
@@ -611,17 +614,24 @@ function setScorePart(partId) {
   }
 
   if (nextPartId) {
+    const part = state.score?.parts.find(
+      (candidate) => candidate.id === nextPartId,
+    );
+    const volume = Math.round(
+      scorePlayer.getPartVolume(nextPartId) * 100,
+    );
     scoreNotation.setPart(nextPartId);
+    elements.selectedPartVolumeLabel.textContent =
+      `${part?.name ?? "Part"} volume`;
+    elements.selectedPartVolumeInput.value = String(volume);
+    elements.selectedPartVolumeValue.textContent = `${volume}%`;
+    elements.selectedPartVolume.dataset.boosted = String(volume > 100);
     navigator.vibrate?.(12);
   } else {
     scoreNotation.setPart(null);
   }
   elements.liveScorePanel.hidden = !nextPartId;
-  elements.playbackVisualizer.hidden = Boolean(nextPartId);
-  elements.playbackCore.classList.toggle(
-    "has-score",
-    Boolean(nextPartId),
-  );
+  elements.selectedPartVolume.hidden = !nextPartId;
 }
 
 function bindPartControl(button, part) {
@@ -700,7 +710,7 @@ function renderScore(score) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "part-toggle is-enabled";
-    button.textContent = `${part.name} · ${part.noteCount}`;
+    button.textContent = part.name;
     button.dataset.partId = part.id;
     button.setAttribute("aria-pressed", "true");
     button.setAttribute("aria-current", "false");
@@ -716,8 +726,8 @@ function renderScore(score) {
   elements.scoreImport.hidden = true;
   elements.scorePlayerPanel.hidden = false;
   elements.liveScorePanel.hidden = true;
+  elements.selectedPartVolume.hidden = true;
   elements.playbackVisualizer.hidden = false;
-  elements.playbackCore.classList.remove("has-score");
   scoreNotation.setScore(score);
   setScoreMessage("");
   if (state.mode === "score") {
@@ -824,6 +834,7 @@ function resetScoreSelection() {
   state.score = null;
   configureMeasureNavigation();
   elements.scorePlayerPanel.hidden = true;
+  elements.selectedPartVolume.hidden = true;
   elements.scoreLibrary.hidden = false;
   elements.scoreImport.hidden = false;
   elements.scoreFileInput.value = "";
@@ -960,6 +971,15 @@ elements.scoreMeasureInput.addEventListener("keydown", (event) => {
     jumpToMeasure();
     elements.scoreMeasureInput.blur();
   }
+});
+elements.selectedPartVolumeInput.addEventListener("input", () => {
+  if (!state.selectedPartId) {
+    return;
+  }
+  const volume = Number(elements.selectedPartVolumeInput.value);
+  elements.selectedPartVolumeValue.textContent = `${volume}%`;
+  elements.selectedPartVolume.dataset.boosted = String(volume > 100);
+  scorePlayer.setPartVolume(state.selectedPartId, volume / 100);
 });
 
 document.addEventListener(

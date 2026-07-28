@@ -18,6 +18,8 @@ export class MuseScorePlayer {
     this.frequencyData = null;
     this.score = null;
     this.enabledParts = new Set();
+    this.partVolumes = new Map();
+    this.partGains = new Map();
     this.playing = false;
     this.position = 0;
     this.startedAt = 0;
@@ -28,8 +30,15 @@ export class MuseScorePlayer {
 
   load(score) {
     this.stop();
+    for (const gain of this.partGains.values()) {
+      gain.disconnect();
+    }
+    this.partGains.clear();
     this.score = score;
     this.enabledParts = new Set(score.parts.map((part) => part.id));
+    this.partVolumes = new Map(
+      score.parts.map((part) => [part.id, 1]),
+    );
     this.position = 0;
     this.onProgress(0, score.duration);
   }
@@ -42,6 +51,7 @@ export class MuseScorePlayer {
 
     if (!this.context || this.context.state === "closed") {
       this.context = new AudioContextClass({ latencyHint: "interactive" });
+      this.partGains.clear();
       this.master = this.context.createGain();
       this.compressor = this.context.createDynamicsCompressor();
       this.analyser = this.context.createAnalyser();
@@ -64,6 +74,17 @@ export class MuseScorePlayer {
         .connect(this.context.destination);
     }
     await this.context.resume();
+  }
+
+  outputForPart(partId) {
+    let output = this.partGains.get(partId);
+    if (!output) {
+      output = this.context.createGain();
+      output.gain.value = this.getPartVolume(partId);
+      output.connect(this.master);
+      this.partGains.set(partId, output);
+    }
+    return output;
   }
 
   currentPosition() {
@@ -134,7 +155,7 @@ export class MuseScorePlayer {
     );
     gain.gain.exponentialRampToValueAtTime(0.0001, endAt);
 
-    oscillator.connect(gain).connect(this.master);
+    oscillator.connect(gain).connect(this.outputForPart(event.partId));
     oscillator.addEventListener(
       "ended",
       () => {
@@ -262,6 +283,25 @@ export class MuseScorePlayer {
     }
   }
 
+  getPartVolume(partId) {
+    return this.partVolumes.get(partId) ?? 1;
+  }
+
+  setPartVolume(partId, volume) {
+    if (!this.score?.parts.some((part) => part.id === partId)) {
+      return;
+    }
+    const nextVolume = clamp(Number(volume) || 0, 0, 2);
+    this.partVolumes.set(partId, nextVolume);
+
+    const output = this.partGains.get(partId);
+    if (output && this.context) {
+      const now = this.context.currentTime;
+      output.gain.cancelScheduledValues(now);
+      output.gain.setTargetAtTime(nextVolume, now, 0.018);
+    }
+  }
+
   visualizationLevels(count = 21) {
     const bandCount = Math.max(1, Math.round(count));
     const levels = Array.from({ length: bandCount }, () => 0);
@@ -335,7 +375,11 @@ export class MuseScorePlayer {
       const envelope =
         Math.min(1, elapsed / 0.055 + 0.24) *
         Math.min(1, remaining / 0.12);
-      const energy = clamp(event.velocity * envelope, 0, 1);
+      const energy = clamp(
+        event.velocity * this.getPartVolume(event.partId) * envelope,
+        0,
+        1,
+      );
       const frequency = midiToFrequency(event.midi);
       const center =
         (Math.log(frequency / minimumFrequency) / frequencySpan) *

@@ -65,6 +65,20 @@ test("part controls can mute and restore an individual part", () => {
   assert.equal(player.enabledParts.has("bass"), true);
 });
 
+test("part volume can be boosted and is clamped to a safe range", () => {
+  const player = new MuseScorePlayer();
+  player.load(score);
+
+  player.setPartVolume("soprano", 1.65);
+  assert.equal(player.getPartVolume("soprano"), 1.65);
+
+  player.setPartVolume("soprano", 4);
+  assert.equal(player.getPartVolume("soprano"), 2);
+
+  player.setPartVolume("soprano", -1);
+  assert.equal(player.getPartVolume("soprano"), 0);
+});
+
 test("seek positions are clamped to the score duration", () => {
   const player = new MuseScorePlayer();
   player.load(score);
