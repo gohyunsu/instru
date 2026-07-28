@@ -37,13 +37,13 @@ test("measurement expresses pitch difference in cents", () => {
 });
 
 test("cent descriptions are explicit", () => {
-  assert.deepEqual(describeCents(4), {
+  assert.deepEqual(describeCents(8), {
     direction: "exact",
-    label: "정확해요",
+    label: "In tune",
     symbol: "",
   });
-  assert.equal(describeCents(-14).label, "조금 낮아요");
-  assert.equal(describeCents(28).label, "높아요");
+  assert.equal(describeCents(-14).label, "Slightly flat");
+  assert.equal(describeCents(28).label, "Sharp");
   assert.equal(formatCents(-14.4), "−14¢");
   assert.equal(formatCents(9.6), "+10¢");
 });

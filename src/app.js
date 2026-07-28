@@ -1,5 +1,6 @@
 import { PitchAudioEngine, ReferenceTonePlayer } from "./audio-engine.js";
 import {
+  EXACT_CENTS,
   describeCents,
   formatCents,
   formatNote,
@@ -11,10 +12,7 @@ import {
 import { readMuseScoreFile } from "./musescore-parser.js";
 import { VerticalPitchGraph } from "./pitch-graph.js";
 import { PitchStabilizer } from "./pitch-stabilizer.js";
-import {
-  LiveLyrics,
-  measureIndexAtPosition,
-} from "./score-lyrics.js";
+import { measureIndexAtPosition } from "./score-lyrics.js";
 import { LiveScoreNotation } from "./score-notation.js";
 import { MuseScorePlayer } from "./score-player.js";
 
@@ -50,16 +48,14 @@ const elements = {
   replaceScoreButton: document.querySelector("#replaceScoreButton"),
   scoreTitle: document.querySelector("#scoreTitle"),
   scoreMeta: document.querySelector("#scoreMeta"),
+  liveScorePanel: document.querySelector("#liveScorePanel"),
   scoreNotation: document.querySelector("#scoreNotation"),
   scoreNotationCount: document.querySelector("#scoreNotationCount"),
   scoreMeasureInput: document.querySelector("#scoreMeasureInput"),
   scoreMeasureTotal: document.querySelector("#scoreMeasureTotal"),
-  scoreLyrics: document.querySelector("#scoreLyrics"),
-  scoreLyricsPart: document.querySelector("#scoreLyricsPart"),
-  scoreLyricsTrack: document.querySelector("#scoreLyricsTrack"),
-  scoreLyricsEmpty: document.querySelector("#scoreLyricsEmpty"),
+  playbackCore: document.querySelector("#playbackCore"),
+  playbackVisualizer: document.querySelector("#playbackVisualizer"),
   scorePlayButton: document.querySelector("#scorePlayButton"),
-  playbackPulse: document.querySelector("#playbackPulse"),
   scoreProgress: document.querySelector("#scoreProgress"),
   scoreCurrentTime: document.querySelector("#scoreCurrentTime"),
   scoreDuration: document.querySelector("#scoreDuration"),
@@ -87,7 +83,7 @@ const state = {
   score: null,
   scoreLoading: false,
   scrubbing: false,
-  lyricPartId: null,
+  selectedPartId: null,
 };
 
 const audioEngine = new PitchAudioEngine(
@@ -100,17 +96,44 @@ const scoreNotation = new LiveScoreNotation(
   elements.scoreNotation,
   elements.scoreNotationCount,
 );
-const liveLyrics = new LiveLyrics({
-  panel: elements.scoreLyrics,
-  partLabel: elements.scoreLyricsPart,
-  track: elements.scoreLyricsTrack,
-  empty: elements.scoreLyricsEmpty,
-});
 const scorePlayer = new MuseScorePlayer({
   onStateChange: handleScorePlaybackState,
   onProgress: handleScoreProgress,
 });
 scoreNotation.setSeekHandler((position) => scorePlayer.seek(position));
+
+const visualizerBars = Array.from({ length: 21 }, () => {
+  const bar = document.createElement("span");
+  bar.className = "visualizer-bar";
+  return bar;
+});
+const visualizerLevels = visualizerBars.map(() => 0);
+const silentVisualizerLevels = visualizerBars.map(() => 0);
+elements.playbackVisualizer.replaceChildren(...visualizerBars);
+
+function renderPlaybackVisualizer() {
+  const targets =
+    scorePlayer.playing && !state.selectedPartId
+      ? scorePlayer.visualizationLevels(visualizerBars.length)
+      : silentVisualizerLevels;
+
+  for (let index = 0; index < visualizerBars.length; index += 1) {
+    const target = targets[index] ?? 0;
+    const response = target > visualizerLevels[index] ? 0.48 : 0.16;
+    visualizerLevels[index] +=
+      (target - visualizerLevels[index]) * response;
+    const level = 0.1 + visualizerLevels[index] * 0.9;
+    visualizerBars[index].style.setProperty(
+      "--visualizer-level",
+      level.toFixed(3),
+    );
+    visualizerBars[index].style.opacity = String(
+      0.28 + visualizerLevels[index] * 0.72,
+    );
+  }
+  requestAnimationFrame(renderPlaybackVisualizer);
+}
+requestAnimationFrame(renderPlaybackVisualizer);
 
 function formatTime(seconds) {
   const safeSeconds = Math.max(0, Math.floor(seconds || 0));
@@ -183,7 +206,6 @@ function jumpToMeasure() {
   }
   scorePlayer.seek(measure.startSeconds);
   scoreNotation.render(measure.startSeconds, true);
-  liveLyrics.render(measure.startSeconds, true);
   elements.scoreMeasureInput.value = String(measure.number);
 }
 
@@ -216,29 +238,29 @@ function setAccuracyLocked(locked) {
 }
 
 function updateAccuracyEffect(cents, now) {
-  const exact = Math.abs(cents) <= 5;
+  const exact = Math.abs(cents) <= EXACT_CENTS;
   if (exact) {
     state.exactSince ??= now;
     if (now - state.exactSince >= 320) {
       setAccuracyLocked(true);
     }
-  } else if (Math.abs(cents) > 8) {
+  } else if (Math.abs(cents) > EXACT_CENTS + 4) {
     state.exactSince = null;
     setAccuracyLocked(false);
   }
 }
 
-function resetPitchSummary(message = "한 음을 길게") {
+function resetPitchSummary(message = "Hold a steady note") {
   state.exactSince = null;
   setAccuracyLocked(false);
-  elements.pitchNote.setAttribute("aria-label", "음정 대기");
+  elements.pitchNote.setAttribute("aria-label", "Waiting for pitch");
   elements.pitchLetter.textContent = "—";
   elements.pitchOctave.textContent = "";
   elements.deviationValue.textContent = state.listening
-    ? "대기 중"
+    ? "Listening"
     : state.starting
-      ? "연결 중"
-      : "연결 필요";
+      ? "Connecting"
+      : "Microphone needed";
   elements.deviationCopy.textContent = "";
   elements.deviationLine.dataset.direction = "";
   elements.pitchMessage.textContent = message;
@@ -255,7 +277,7 @@ function updateReferenceButtons(midi = state.referenceMidi) {
     button.querySelector(".note-button-name").textContent = note.name;
     button.querySelector(".note-button-octave").textContent = note.octave;
     button.classList.toggle("is-current", offset === 0);
-    button.setAttribute("aria-label", `${formatNote(noteMidi)} 기준음 재생`);
+    button.setAttribute("aria-label", `Play ${formatNote(noteMidi)}`);
   }
 }
 
@@ -267,10 +289,10 @@ function showMeasurement(measurement, confidence) {
   elements.deviationValue.textContent = formatCents(measurement.cents);
   elements.deviationCopy.textContent =
     description.direction === "exact"
-      ? "정확"
+      ? "In tune"
       : description.direction === "high"
-        ? "높음"
-        : "낮음";
+        ? "Sharp"
+        : "Flat";
   elements.deviationLine.dataset.direction = description.direction;
   elements.pitchMessage.textContent = "";
   elements.graphEmpty.classList.add("is-hidden");
@@ -356,15 +378,15 @@ function handleToneState(playing) {
     return;
   }
   if (playing) {
-    setStatus("기준음 재생", "tone");
+    setStatus("Reference tone", "tone");
   } else {
     state.activeToneButton?.classList.remove("is-playing");
     state.activeToneButton = null;
     if (state.listening) {
-      setStatus("듣는 중", "listening");
+      setStatus("Listening", "listening");
       state.lastVoicedAt = performance.now();
     } else {
-      setStatus("준비");
+      setStatus("Ready");
     }
   }
 }
@@ -387,24 +409,24 @@ async function handleReferenceClick(event) {
   } catch {
     button.classList.remove("is-playing");
     state.activeToneButton = null;
-    setHelper("이 브라우저에서는 기준음을 재생할 수 없습니다.", true);
+    setHelper("Reference tones are not supported in this browser.", true);
   }
 }
 
 function microphoneErrorMessage(error) {
   if (error?.message === "UNSUPPORTED") {
-    return "이 브라우저는 실시간 오디오 분석을 지원하지 않습니다.";
+    return "Live audio analysis is not supported in this browser.";
   }
   if (error?.name === "NotAllowedError") {
-    return "마이크 권한이 필요합니다. 브라우저 설정에서 허용해주세요.";
+    return "Microphone access is required. Allow it in browser settings.";
   }
   if (error?.name === "NotFoundError") {
-    return "사용할 수 있는 마이크를 찾지 못했습니다.";
+    return "No available microphone was found.";
   }
   if (error?.name === "NotReadableError") {
-    return "다른 앱이 마이크를 사용 중인지 확인해주세요.";
+    return "Check whether another app is using the microphone.";
   }
-  return "마이크를 시작하지 못했습니다. 잠시 후 다시 시도해주세요.";
+  return "Could not start the microphone. Please try again.";
 }
 
 async function startListening() {
@@ -414,8 +436,8 @@ async function startListening() {
 
   state.starting = true;
   if (state.mode === "tuner") {
-    setStatus("연결 중", "paused");
-    setHelper("마이크 권한 필요");
+    setStatus("Connecting", "paused");
+    setHelper("Microphone permission required");
     resetPitchSummary("");
   }
 
@@ -425,16 +447,17 @@ async function startListening() {
     state.lastVoicedAt = performance.now();
     audioEngine.setProcessing(state.mode === "tuner");
     if (state.mode === "tuner") {
-      setStatus("듣는 중", "listening");
+      setStatus("Listening", "listening");
       setHelper("");
       resetPitchSummary();
-      elements.graphEmptyText.textContent = "한 음을 길게";
+      elements.graphEmptyText.textContent = "Hold a steady note";
     }
     requestWakeLock();
   } catch (error) {
     state.listening = false;
+    state.starting = false;
     if (state.mode === "tuner") {
-      setStatus("다시 시도", "error");
+      setStatus("Try again", "error");
       setHelper(microphoneErrorMessage(error), true);
       resetPitchSummary("");
     }
@@ -457,7 +480,7 @@ async function stopListening() {
   }
   elements.graphEmpty.classList.remove("is-hidden");
   if (state.mode === "tuner") {
-    setStatus("연결 중", "paused");
+    setStatus("Connecting", "paused");
     setHelper("");
     resetPitchSummary("");
   }
@@ -511,8 +534,8 @@ async function recoverAudio() {
     requestWakeLock();
   } catch {
     if (state.mode === "tuner") {
-      setStatus("화면 터치", "paused");
-      setHelper("화면을 한 번 터치하면 실시간 분석을 계속합니다.");
+      setStatus("Tap to resume", "paused");
+      setHelper("Tap once to continue live analysis.");
     }
   }
 }
@@ -536,66 +559,69 @@ function setMode(mode) {
     audioEngine.setProcessing(false);
     graph.addGap();
     if (scorePlayer.playing) {
-      setStatus("재생 중", "tone");
+      setStatus("Playing", "tone");
     } else if (state.score) {
-      setStatus("재생 준비");
+      setStatus("Ready to play");
     } else {
-      setStatus("파일 대기");
+      setStatus("Choose a score");
     }
     if (state.score) {
       const position = scorePlayer.currentPosition();
       scoreNotation.render(position, true);
-      liveLyrics.render(position, true);
     }
   } else {
     scorePlayer.pause();
     audioEngine.setProcessing(state.listening);
     if (state.listening) {
-      setStatus("듣는 중", "listening");
+      setStatus("Listening", "listening");
       state.lastVoicedAt = performance.now();
     } else {
-      setStatus("다시 시도", "error");
+      setStatus("Try again", "error");
     }
   }
 }
 
 function scoreErrorMessage(error) {
   const messages = {
-    FILE_TOO_LARGE: "파일이 너무 큽니다. 30MB 이하 악보를 사용해주세요.",
-    INVALID_MSCZ: "올바른 MuseScore 압축 파일이 아닙니다.",
-    ENCRYPTED_MSCZ: "암호화된 MuseScore 파일은 열 수 없습니다.",
+    FILE_TOO_LARGE: "Use a score smaller than 30 MB.",
+    INVALID_MSCZ: "This is not a valid MuseScore archive.",
+    ENCRYPTED_MSCZ: "Encrypted MuseScore files cannot be opened.",
     DECOMPRESSION_UNSUPPORTED:
-      "이 브라우저는 MSCZ 압축 해제를 지원하지 않습니다. MSCX로 저장해 사용해주세요.",
-    UNSUPPORTED_ZIP_COMPRESSION: "지원하지 않는 MSCZ 압축 방식입니다.",
-    MSCX_NOT_FOUND: "MSCZ 안에서 악보 원본을 찾지 못했습니다.",
-    INVALID_MSCX: "MuseScore XML 형식을 읽지 못했습니다.",
-    XML_PARSER_UNSUPPORTED: "이 브라우저는 XML 악보를 지원하지 않습니다.",
-    UNSUPPORTED_SCORE_FORMAT: ".mscz 또는 .mscx 파일을 선택해주세요.",
-    NO_PLAYABLE_NOTES: "재생할 수 있는 음표가 없습니다.",
-    TOO_MANY_NOTES: "음표가 너무 많은 악보입니다. 12,000음 이하를 지원합니다.",
-    SCORE_TOO_LONG: "한 시간보다 긴 악보는 현재 지원하지 않습니다.",
+      "This browser cannot unpack MSCZ files. Save the score as MSCX instead.",
+    UNSUPPORTED_ZIP_COMPRESSION: "This MSCZ compression method is unsupported.",
+    MSCX_NOT_FOUND: "No MuseScore source was found in this archive.",
+    INVALID_MSCX: "The MuseScore XML could not be read.",
+    XML_PARSER_UNSUPPORTED: "This browser cannot read MuseScore XML.",
+    UNSUPPORTED_SCORE_FORMAT: "Choose an .mscz or .mscx file.",
+    NO_PLAYABLE_NOTES: "This score contains no playable notes.",
+    TOO_MANY_NOTES: "Scores are limited to 12,000 notes.",
+    SCORE_TOO_LONG: "Scores longer than one hour are unsupported.",
   };
-  return messages[error?.message] ?? "악보를 읽지 못했습니다. 파일을 확인해주세요.";
+  return messages[error?.message] ?? "Could not read this score.";
 }
 
-function setLyricsPart(partId) {
-  const nextPartId = state.lyricPartId === partId ? null : partId;
-  state.lyricPartId = nextPartId;
+function setScorePart(partId) {
+  const nextPartId = state.selectedPartId === partId ? null : partId;
+  state.selectedPartId = nextPartId;
 
   for (const button of elements.partList.querySelectorAll(".part-toggle")) {
     const selected = button.dataset.partId === nextPartId;
-    button.classList.toggle("is-lyric-source", selected);
+    button.classList.toggle("is-score-source", selected);
     button.setAttribute("aria-current", selected ? "true" : "false");
   }
 
   if (nextPartId) {
-    liveLyrics.setPart(nextPartId);
     scoreNotation.setPart(nextPartId);
     navigator.vibrate?.(12);
   } else {
-    liveLyrics.clearPart();
     scoreNotation.setPart(null);
   }
+  elements.liveScorePanel.hidden = !nextPartId;
+  elements.playbackVisualizer.hidden = Boolean(nextPartId);
+  elements.playbackCore.classList.toggle(
+    "has-score",
+    Boolean(nextPartId),
+  );
 }
 
 function bindPartControl(button, part) {
@@ -620,7 +646,7 @@ function bindPartControl(button, part) {
     longPressTimer = window.setTimeout(() => {
       longPressTimer = null;
       longPressed = true;
-      setLyricsPart(part.id);
+      setScorePart(part.id);
     }, longPressDuration);
   });
   button.addEventListener("pointermove", (event) => {
@@ -641,7 +667,7 @@ function bindPartControl(button, part) {
   button.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && event.shiftKey) {
       event.preventDefault();
-      setLyricsPart(part.id);
+      setScorePart(part.id);
     }
   });
   button.addEventListener("click", (event) => {
@@ -659,13 +685,11 @@ function bindPartControl(button, part) {
 
 function renderScore(score) {
   state.score = score;
-  state.lyricPartId = null;
+  state.selectedPartId = null;
   configureMeasureNavigation(score);
   scorePlayer.load(score);
-  liveLyrics.setScore(score);
   elements.scoreTitle.textContent = score.title;
-  elements.scoreMeta.textContent =
-    `${score.parts.length}성부 · ${score.events.length.toLocaleString()}음 · ${formatTime(score.duration)}`;
+  elements.scoreMeta.textContent = formatTime(score.duration);
   elements.scoreProgress.max = String(score.duration);
   elements.scoreProgress.value = "0";
   elements.scoreCurrentTime.textContent = "0:00";
@@ -682,7 +706,7 @@ function renderScore(score) {
     button.setAttribute("aria-current", "false");
     button.setAttribute(
       "aria-label",
-      `${part.name}, 탭하여 소리 켜기 또는 끄기, 길게 눌러 악보와 가사 선택`,
+      `${part.name}. Tap to mute or unmute. Hold to open its score and lyrics.`,
     );
     bindPartControl(button, part);
     elements.partList.append(button);
@@ -691,10 +715,13 @@ function renderScore(score) {
   elements.scoreLibrary.hidden = true;
   elements.scoreImport.hidden = true;
   elements.scorePlayerPanel.hidden = false;
+  elements.liveScorePanel.hidden = true;
+  elements.playbackVisualizer.hidden = false;
+  elements.playbackCore.classList.remove("has-score");
   scoreNotation.setScore(score);
   setScoreMessage("");
   if (state.mode === "score") {
-    setStatus("재생 준비");
+    setStatus("Ready to play");
   }
 }
 
@@ -704,14 +731,14 @@ async function loadScoreBytes(bytes, fileName) {
   }
   state.scoreLoading = true;
   scorePlayer.stop();
-  setStatus("악보 읽는 중", "paused");
-  setScoreMessage(`${fileName} 읽는 중…`);
+  setStatus("Reading score", "paused");
+  setScoreMessage(`Reading ${fileName}…`);
 
   try {
     const score = await readMuseScoreFile(bytes, fileName);
     renderScore(score);
   } catch (error) {
-    setStatus("파일 확인", "error");
+    setStatus("Check file", "error");
     setScoreMessage(scoreErrorMessage(error), true);
   } finally {
     state.scoreLoading = false;
@@ -728,14 +755,13 @@ async function handleLocalFile(file) {
 function renderLibrary(scores) {
   elements.libraryList.replaceChildren();
   elements.libraryCount.textContent = scores.length
-    ? `${scores.length}개`
-    : "비어 있음";
+    ? String(scores.length)
+    : "Empty";
 
   if (!scores.length) {
     const message = document.createElement("p");
     message.className = "library-empty";
-    message.textContent =
-      "assets/scores/에 악보를 저장하면 이곳에 표시됩니다.";
+    message.textContent = "Add scores to assets/scores/ to list them here.";
     elements.libraryList.append(message);
     return;
   }
@@ -756,8 +782,8 @@ function renderLibrary(scores) {
       '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 6 6-6 6"></path></svg>',
     );
     button.addEventListener("click", async () => {
-      setStatus("다운로드 중", "paused");
-      setScoreMessage(`${score.name} 불러오는 중…`);
+      setStatus("Downloading", "paused");
+      setScoreMessage(`Loading ${score.name}…`);
       try {
         const response = await fetch(new URL(score.path, document.baseURI));
         if (!response.ok) {
@@ -768,8 +794,8 @@ function renderLibrary(scores) {
           score.fileName ?? `${score.name}.${score.format}`,
         );
       } catch {
-        setStatus("파일 확인", "error");
-        setScoreMessage("보관된 악보를 불러오지 못했습니다.", true);
+        setStatus("Check file", "error");
+        setScoreMessage("Could not load this stored score.", true);
       }
     });
     elements.libraryList.append(button);
@@ -786,7 +812,7 @@ async function loadScoreLibrary() {
     const manifest = await response.json();
     renderLibrary(Array.isArray(manifest.scores) ? manifest.scores : []);
   } catch {
-    elements.libraryCount.textContent = "확인 실패";
+    elements.libraryCount.textContent = "Unavailable";
     renderLibrary([]);
   }
 }
@@ -794,15 +820,14 @@ async function loadScoreLibrary() {
 function resetScoreSelection() {
   scorePlayer.stop();
   scoreNotation.clear();
-  liveLyrics.clear();
-  state.lyricPartId = null;
+  state.selectedPartId = null;
   state.score = null;
   configureMeasureNavigation();
   elements.scorePlayerPanel.hidden = true;
   elements.scoreLibrary.hidden = false;
   elements.scoreImport.hidden = false;
   elements.scoreFileInput.value = "";
-  setStatus("파일 대기");
+  setStatus("Choose a score");
   setScoreMessage("");
 }
 
@@ -818,20 +843,19 @@ async function toggleScorePlayback() {
       requestWakeLock();
     }
   } catch {
-    setStatus("재생 불가", "error");
-    setScoreMessage("이 브라우저에서 악보 소리를 시작하지 못했습니다.", true);
+    setStatus("Playback unavailable", "error");
+    setScoreMessage("Could not start score playback in this browser.", true);
   }
 }
 
 function handleScorePlaybackState(playing) {
   elements.scorePlayButton.classList.toggle("is-playing", playing);
-  elements.playbackPulse.classList.toggle("is-playing", playing);
   elements.scorePlayButton.setAttribute(
     "aria-label",
-    playing ? "악보 일시정지" : "악보 재생",
+    playing ? "Pause score" : "Play score",
   );
   if (state.mode === "score") {
-    setStatus(playing ? "재생 중" : "일시정지", playing ? "tone" : "ready");
+    setStatus(playing ? "Playing" : "Paused", playing ? "tone" : "ready");
   }
 }
 
@@ -842,7 +866,6 @@ function handleScoreProgress(position, duration) {
   }
   elements.scoreDuration.textContent = formatTime(duration);
   scoreNotation.render(position);
-  liveLyrics.render(position);
   updateMeasureNavigation(position);
 }
 
@@ -851,7 +874,7 @@ function applyTheme(theme) {
   localStorage.setItem("instru-theme", theme);
   elements.themeToggle.setAttribute(
     "aria-label",
-    theme === "dark" ? "라이트 모드 켜기" : "다크 모드 켜기",
+    theme === "dark" ? "Use light theme" : "Use dark theme",
   );
   document
     .querySelector('meta[name="theme-color"]')
@@ -921,7 +944,6 @@ elements.scoreProgress.addEventListener("input", () => {
   const position = Number(elements.scoreProgress.value);
   elements.scoreCurrentTime.textContent = formatTime(position);
   scoreNotation.render(position, true);
-  liveLyrics.render(position, true);
 });
 elements.scoreProgress.addEventListener("change", () => {
   scorePlayer.seek(Number(elements.scoreProgress.value));

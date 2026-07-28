@@ -1,7 +1,13 @@
+import {
+  activeLyricId,
+  lyricTokenText,
+} from "./score-lyrics.js";
+
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const STAFF_HEIGHT = 112;
+const STAFF_HEIGHT_WITH_LYRICS = 142;
 const STAFF_GAP = 8;
-const PIXELS_PER_SECOND = 64;
+const PIXELS_PER_SECOND = 76;
 const EDGE_INSET = 48;
 
 const LETTER_INDEX = {
@@ -164,6 +170,31 @@ export function positionForScrollLeft(
   );
 }
 
+export function lyricsForPart(score, partId) {
+  const partLyrics = (score?.lyrics ?? [])
+    .filter((lyric) => lyric.partId === partId)
+    .sort((left, right) => left.startSeconds - right.startSeconds);
+  if (!partLyrics.length) {
+    return [];
+  }
+
+  const verse = Math.min(
+    ...partLyrics.map((lyric) => lyric.verse ?? 0),
+  );
+  const seen = new Set();
+  return partLyrics.filter((lyric) => {
+    if ((lyric.verse ?? 0) !== verse) {
+      return false;
+    }
+    const key = `${lyric.startTick}:${lyric.text}:${lyric.verse ?? 0}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
 function createSvgElement(tagName, attributes = {}, text = "") {
   const element = document.createElementNS(SVG_NAMESPACE, tagName);
   for (const [name, value] of Object.entries(attributes)) {
@@ -202,6 +233,9 @@ export class LiveScoreNotation {
     this.clefs = new Map();
     this.eventNodes = [];
     this.activeNodes = new Set();
+    this.partLyrics = [];
+    this.lyricNodes = new Map();
+    this.activeLyricNode = null;
     this.position = 0;
     this.viewportWidth = 0;
     this.scrollCommitTimer = null;
@@ -215,7 +249,7 @@ export class LiveScoreNotation {
     });
     this.empty = document.createElement("p");
     this.empty.className = "notation-empty";
-    this.empty.textContent = "성부를 길게 선택";
+    this.empty.textContent = "Hold a part to open";
     this.container.replaceChildren(this.svg, this.empty);
 
     this.container.addEventListener("pointerdown", () => this.beginExploring(), {
@@ -243,6 +277,10 @@ export class LiveScoreNotation {
     this.position = 0;
     this.eventsByPart = new Map();
     this.clefs = new Map();
+    this.partLyrics = [];
+    this.lyricNodes.clear();
+    this.activeLyricNode = null;
+    this.container.classList.remove("has-lyrics");
 
     for (const part of score.parts) {
       const events = score.events
@@ -266,10 +304,13 @@ export class LiveScoreNotation {
     this.clefs.clear();
     this.eventNodes = [];
     this.activeNodes.clear();
+    this.partLyrics = [];
+    this.lyricNodes.clear();
+    this.activeLyricNode = null;
     this.svg.replaceChildren();
     this.svg.removeAttribute("viewBox");
     this.svg.style.width = "";
-    this.container.classList.remove("has-timeline");
+    this.container.classList.remove("has-timeline", "has-lyrics");
     this.container.scrollLeft = 0;
     this.updateLabel();
     this.updateVisibility();
@@ -298,7 +339,7 @@ export class LiveScoreNotation {
     const part = this.score?.parts.find(
       (candidate) => candidate.id === this.partId,
     );
-    this.countElement.textContent = part?.name ?? "선택 없음";
+    this.countElement.textContent = part?.name ?? "None selected";
   }
 
   updateVisibility() {
@@ -307,9 +348,9 @@ export class LiveScoreNotation {
     this.empty.hidden = hasTimeline;
     this.container.classList.toggle("has-timeline", hasTimeline);
     if (!this.score) {
-      this.empty.textContent = "악보 없음";
+      this.empty.textContent = "No score";
     } else if (!this.partId) {
-      this.empty.textContent = "성부를 길게 선택";
+      this.empty.textContent = "Hold a part to open";
     }
   }
 
@@ -457,6 +498,10 @@ export class LiveScoreNotation {
 
   buildTimeline(preservePosition = false) {
     if (!this.score || !this.partId) {
+      this.partLyrics = [];
+      this.lyricNodes.clear();
+      this.activeLyricNode = null;
+      this.container.classList.remove("has-lyrics");
       this.svg.replaceChildren();
       return;
     }
@@ -477,6 +522,14 @@ export class LiveScoreNotation {
       EDGE_INSET;
     const part = this.score.parts.find(
       (candidate) => candidate.id === this.partId,
+    );
+    this.partLyrics = lyricsForPart(this.score, this.partId);
+    const timelineHeight = this.partLyrics.length
+      ? STAFF_HEIGHT_WITH_LYRICS
+      : STAFF_HEIGHT;
+    this.container.classList.toggle(
+      "has-lyrics",
+      Boolean(this.partLyrics.length),
     );
     const clef = this.clefs.get(this.partId) ?? "treble";
     const bassClef = clef.startsWith("bass");
@@ -552,11 +605,29 @@ export class LiveScoreNotation {
       this.renderEvent(event, clef, group, staffBottom);
     }
 
-    this.svg.setAttribute("viewBox", `0 0 ${totalWidth} ${STAFF_HEIGHT}`);
+    this.lyricNodes.clear();
+    this.activeLyricNode = null;
+    for (const lyric of this.partLyrics) {
+      const lyricElement = createSvgElement(
+        "text",
+        {
+          x: this.xForTime(lyric.startSeconds),
+          y: 125,
+          class: "notation-lyric",
+          "data-lyric-id": lyric.id,
+          "text-anchor": "middle",
+        },
+        lyricTokenText(lyric),
+      );
+      group.append(lyricElement);
+      this.lyricNodes.set(lyric.id, lyricElement);
+    }
+
+    this.svg.setAttribute("viewBox", `0 0 ${totalWidth} ${timelineHeight}`);
     this.svg.setAttribute("width", totalWidth);
-    this.svg.setAttribute("height", STAFF_HEIGHT);
+    this.svg.setAttribute("height", timelineHeight);
     this.svg.style.width = `${totalWidth}px`;
-    this.svg.style.height = `${STAFF_HEIGHT}px`;
+    this.svg.style.height = `${timelineHeight}px`;
     this.svg.replaceChildren(group);
     this.updateActiveNotes();
     this.updateAriaLabel(part);
@@ -591,6 +662,14 @@ export class LiveScoreNotation {
       }
     }
     this.activeNodes = nextActive;
+
+    const activeId = activeLyricId(this.partLyrics, this.position);
+    const activeLyricNode = this.lyricNodes.get(activeId) ?? null;
+    if (activeLyricNode !== this.activeLyricNode) {
+      this.activeLyricNode?.classList.remove("is-active");
+      activeLyricNode?.classList.add("is-active");
+      this.activeLyricNode = activeLyricNode;
+    }
   }
 
   updateAriaLabel(part = null) {
@@ -602,7 +681,7 @@ export class LiveScoreNotation {
     }
     this.container.setAttribute(
       "aria-label",
-      `${selectedPart.name} 악보, ${Math.floor(this.position / 60)}분 ${Math.floor(this.position % 60)}초`,
+      `${selectedPart.name} score at ${Math.floor(this.position / 60)} minutes ${Math.floor(this.position % 60)} seconds`,
     );
   }
 

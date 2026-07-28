@@ -14,21 +14,22 @@ export const NOTE_NAMES = [
 ];
 
 export const SOLFEGE_NAMES = [
-  "도",
-  "도♯",
-  "레",
-  "레♯",
-  "미",
-  "파",
-  "파♯",
-  "솔",
-  "솔♯",
-  "라",
-  "라♯",
-  "시",
+  "Do",
+  "Di",
+  "Re",
+  "Ri",
+  "Mi",
+  "Fa",
+  "Fi",
+  "Sol",
+  "Si",
+  "La",
+  "Li",
+  "Ti",
 ];
 
 export const DEFAULT_CONCERT_A = 440;
+export const EXACT_CENTS = 8;
 
 export function frequencyToMidi(frequency, concertA = DEFAULT_CONCERT_A) {
   if (!Number.isFinite(frequency) || frequency <= 0) {
@@ -79,21 +80,21 @@ export function measurementFromMidi(
 export function describeCents(cents) {
   const magnitude = Math.abs(cents);
 
-  if (magnitude <= 5) {
-    return { direction: "exact", label: "정확해요", symbol: "" };
+  if (magnitude <= EXACT_CENTS) {
+    return { direction: "exact", label: "In tune", symbol: "" };
   }
 
   if (cents > 0) {
     return {
       direction: "high",
-      label: magnitude <= 20 ? "조금 높아요" : "높아요",
+      label: magnitude <= 20 ? "Slightly sharp" : "Sharp",
       symbol: "↑",
     };
   }
 
   return {
     direction: "low",
-    label: magnitude <= 20 ? "조금 낮아요" : "낮아요",
+    label: magnitude <= 20 ? "Slightly flat" : "Flat",
     symbol: "↓",
   };
 }

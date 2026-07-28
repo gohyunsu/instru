@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   clefForEvents,
+  lyricsForPart,
   noteSpelling,
   positionForScrollLeft,
   scrollLeftForPosition,
@@ -65,7 +66,50 @@ test("keeps held notes visible when their start is outside the window", () => {
 });
 
 test("maps horizontal score exploration to playback time", () => {
-  assert.equal(scrollLeftForPosition(12.5), 800);
-  assert.equal(positionForScrollLeft(800, 20), 12.5);
+  assert.equal(scrollLeftForPosition(12.5), 950);
+  assert.equal(positionForScrollLeft(950, 20), 12.5);
   assert.equal(positionForScrollLeft(5000, 20), 20);
+});
+
+test("places one lyric verse on the selected part timeline", () => {
+  const score = {
+    lyrics: [
+      {
+        id: "a",
+        partId: "s",
+        verse: 0,
+        startTick: 0,
+        startSeconds: 0,
+        text: "Stay",
+      },
+      {
+        id: "duplicate",
+        partId: "s",
+        verse: 0,
+        startTick: 0,
+        startSeconds: 0,
+        text: "Stay",
+      },
+      {
+        id: "verse-two",
+        partId: "s",
+        verse: 1,
+        startTick: 0,
+        startSeconds: 0,
+        text: "Go",
+      },
+      {
+        id: "other",
+        partId: "b",
+        verse: 0,
+        startTick: 0,
+        startSeconds: 0,
+        text: "Bass",
+      },
+    ],
+  };
+  assert.deepEqual(
+    lyricsForPart(score, "s").map((lyric) => lyric.id),
+    ["a"],
+  );
 });

@@ -1,5 +1,7 @@
+import { EXACT_CENTS } from "./music.js";
+
 const HISTORY_MS = 8000;
-const MAX_GAP_MS = 190;
+const MAX_GAP_MS = 260;
 
 function clamp(value, minimum, maximum) {
   return Math.max(minimum, Math.min(maximum, value));
@@ -98,11 +100,14 @@ export class VerticalPitchGraph {
 
   drawGrid(colors, left, top, plotWidth, plotHeight) {
     const context = this.context;
-    const exactLeft = this.xForCents(-5, left, plotWidth);
-    const exactRight = this.xForCents(5, left, plotWidth);
+    const exactLeft = this.xForCents(-EXACT_CENTS, left, plotWidth);
+    const exactRight = this.xForCents(EXACT_CENTS, left, plotWidth);
 
+    context.save();
+    context.globalAlpha = 0.82;
     context.fillStyle = colors.accentSoft;
     context.fillRect(exactLeft, top, exactRight - exactLeft, plotHeight);
+    context.restore();
 
     for (const cents of [-50, -25, 0, 25, 50]) {
       const x = this.xForCents(cents, left, plotWidth);
@@ -142,8 +147,7 @@ export class VerticalPitchGraph {
       const disconnected =
         point.gap ||
         (previous &&
-          (point.time - previous.time > MAX_GAP_MS ||
-            point.note !== previous.note));
+          point.time - previous.time > MAX_GAP_MS);
 
       if (disconnected) {
         if (chunk.length > 1) {
@@ -185,12 +189,8 @@ export class VerticalPitchGraph {
 
       context.save();
       context.globalAlpha = ageAlpha * clamp(confidence, 0.45, 1);
-      context.strokeStyle = pitchGradient;
-      context.lineWidth = 2.6;
       context.lineCap = "round";
       context.lineJoin = "round";
-      context.shadowBlur = 5;
-      context.shadowColor = colors.accentSoft;
       context.beginPath();
       context.moveTo(mapped[0].x, mapped[0].y);
 
@@ -213,6 +213,14 @@ export class VerticalPitchGraph {
         context.quadraticCurveTo(last.x, last.y, last.x, last.y);
       }
 
+      context.strokeStyle = colors.accentSoft;
+      context.lineWidth = 8;
+      context.shadowBlur = 18;
+      context.shadowColor = colors.accentSoft;
+      context.stroke();
+      context.strokeStyle = pitchGradient;
+      context.lineWidth = 2.8;
+      context.shadowBlur = 8;
       context.stroke();
       context.restore();
     }
@@ -225,12 +233,16 @@ export class VerticalPitchGraph {
     const latestX = this.xForCents(latest.cents, left, plotWidth);
     const latestY = this.yForTime(latest.time, now, top, plotHeight);
     const color =
-      Math.abs(latest.cents) <= 5
+      Math.abs(latest.cents) <= EXACT_CENTS
         ? colors.accent
         : latest.cents < 0
           ? colors.low
           : colors.high;
 
+    context.beginPath();
+    context.fillStyle = colors.accentSoft;
+    context.arc(latestX, latestY, 8, 0, Math.PI * 2);
+    context.fill();
     context.beginPath();
     context.fillStyle = colors.surface;
     context.arc(latestX, latestY, 5.5, 0, Math.PI * 2);

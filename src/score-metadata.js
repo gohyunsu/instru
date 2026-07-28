@@ -1,5 +1,6 @@
 const GENERIC_TITLES = new Set([
   "이름 없는 악보",
+  "Untitled score",
   "untitled score",
   "untitled",
 ]);
@@ -47,7 +48,7 @@ function metaTitle(xml, name) {
   return plainText(xml.match(expression)?.[1] ?? "");
 }
 
-export function titleFromMuseScoreXml(xml, fallbackName = "제목 없음") {
+export function titleFromMuseScoreXml(xml, fallbackName = "Untitled") {
   for (const name of ["workTitle", "movementTitle"]) {
     const value = metaTitle(xml, name);
     if (value && !GENERIC_TITLES.has(value.toLowerCase())) {
@@ -66,5 +67,5 @@ export function titleFromMuseScoreXml(xml, fallbackName = "제목 없음") {
     }
   }
 
-  return String(fallbackName).replace(/\.(mscz|mscx)$/i, "") || "제목 없음";
+  return String(fallbackName).replace(/\.(mscz|mscx)$/i, "") || "Untitled";
 }

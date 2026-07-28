@@ -12,7 +12,7 @@ test("reads the stored MuseScore work title", () => {
 test("uses a visible title when metadata is generic", () => {
   const xml = `
     <Score>
-      <metaTag name="workTitle">Untitled score</metaTag>
+      <metaTag name="workTitle">이름 없는 악보</metaTag>
       <Text><style>title</style><text>And July</text></Text>
     </Score>
   `;

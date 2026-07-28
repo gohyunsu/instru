@@ -14,6 +14,8 @@ export class MuseScorePlayer {
     this.context = null;
     this.master = null;
     this.compressor = null;
+    this.analyser = null;
+    this.frequencyData = null;
     this.score = null;
     this.enabledParts = new Set();
     this.playing = false;
@@ -42,13 +44,24 @@ export class MuseScorePlayer {
       this.context = new AudioContextClass({ latencyHint: "interactive" });
       this.master = this.context.createGain();
       this.compressor = this.context.createDynamicsCompressor();
+      this.analyser = this.context.createAnalyser();
       this.master.gain.value = 0.13;
       this.compressor.threshold.value = -15;
       this.compressor.knee.value = 18;
       this.compressor.ratio.value = 5;
       this.compressor.attack.value = 0.004;
       this.compressor.release.value = 0.15;
-      this.master.connect(this.compressor).connect(this.context.destination);
+      this.analyser.fftSize = 256;
+      this.analyser.minDecibels = -86;
+      this.analyser.maxDecibels = -20;
+      this.analyser.smoothingTimeConstant = 0.74;
+      this.frequencyData = new Uint8Array(
+        this.analyser.frequencyBinCount,
+      );
+      this.master
+        .connect(this.compressor)
+        .connect(this.analyser)
+        .connect(this.context.destination);
     }
     await this.context.resume();
   }
@@ -247,6 +260,99 @@ export class MuseScorePlayer {
       this.nextEventIndex = this.findEventIndex(position);
       this.scheduleUpcoming();
     }
+  }
+
+  visualizationLevels(count = 21) {
+    const bandCount = Math.max(1, Math.round(count));
+    const levels = Array.from({ length: bandCount }, () => 0);
+    const sampleRate = this.context?.sampleRate ?? 48000;
+    const nyquist = sampleRate / 2;
+    const minimumFrequency = 70;
+    const maximumFrequency = Math.min(3200, nyquist);
+
+    if (this.analyser && this.frequencyData) {
+      this.analyser.getByteFrequencyData(this.frequencyData);
+      for (let index = 0; index < bandCount; index += 1) {
+        const startRatio = index / bandCount;
+        const endRatio = (index + 1) / bandCount;
+        const startFrequency =
+          minimumFrequency *
+          (maximumFrequency / minimumFrequency) ** startRatio;
+        const endFrequency =
+          minimumFrequency *
+          (maximumFrequency / minimumFrequency) ** endRatio;
+        const startBin = clamp(
+          Math.floor(
+            (startFrequency / nyquist) * this.frequencyData.length,
+          ),
+          0,
+          this.frequencyData.length - 1,
+        );
+        const endBin = clamp(
+          Math.ceil(
+            (endFrequency / nyquist) * this.frequencyData.length,
+          ),
+          startBin + 1,
+          this.frequencyData.length,
+        );
+
+        let peak = 0;
+        let total = 0;
+        for (let bin = startBin; bin < endBin; bin += 1) {
+          const value = this.frequencyData[bin] / 255;
+          peak = Math.max(peak, value);
+          total += value;
+        }
+        const average = total / Math.max(1, endBin - startBin);
+        levels[index] = clamp(
+          (peak * 0.68 + average * 0.32) ** 0.72,
+          0,
+          1,
+        );
+      }
+    }
+
+    if (!this.playing || !this.score) {
+      return levels;
+    }
+
+    const position = this.currentPosition();
+    const frequencySpan = Math.log(maximumFrequency / minimumFrequency);
+    for (const event of this.score.events) {
+      if (event.startSeconds > position + 0.06) {
+        break;
+      }
+      const eventEnd = event.startSeconds + event.durationSeconds;
+      if (
+        eventEnd <= position ||
+        !this.enabledParts.has(event.partId)
+      ) {
+        continue;
+      }
+
+      const elapsed = Math.max(0, position - event.startSeconds);
+      const remaining = Math.max(0, eventEnd - position);
+      const envelope =
+        Math.min(1, elapsed / 0.055 + 0.24) *
+        Math.min(1, remaining / 0.12);
+      const energy = clamp(event.velocity * envelope, 0, 1);
+      const frequency = midiToFrequency(event.midi);
+      const center =
+        (Math.log(frequency / minimumFrequency) / frequencySpan) *
+        (bandCount - 1);
+
+      for (let index = 0; index < bandCount; index += 1) {
+        const distance = index - center;
+        const contribution =
+          energy * Math.exp(-(distance * distance) / 2.8);
+        levels[index] = clamp(
+          Math.max(levels[index], contribution),
+          0,
+          1,
+        );
+      }
+    }
+    return levels;
   }
 
   stopNodes(partId = null) {

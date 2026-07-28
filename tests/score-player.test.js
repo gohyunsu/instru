@@ -73,3 +73,20 @@ test("seek positions are clamped to the score duration", () => {
   player.seek(-5);
   assert.equal(player.position, 0);
 });
+
+test("returns quiet visualization bands before audio starts", () => {
+  const player = new MuseScorePlayer();
+  assert.deepEqual(player.visualizationLevels(5), [0, 0, 0, 0, 0]);
+});
+
+test("maps active score notes into distinct visualization bands", () => {
+  const player = new MuseScorePlayer();
+  player.load(score);
+  player.playing = true;
+  player.position = 0.2;
+  const levels = player.visualizationLevels(9);
+  player.playing = false;
+
+  assert.ok(Math.max(...levels) > 0.5);
+  assert.ok(new Set(levels.map((level) => level.toFixed(2))).size > 2);
+});

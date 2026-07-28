@@ -172,7 +172,7 @@ function parseParts(scoreElement, staffElements) {
       childText(part, "trackName") ||
       childText(instrument, "trackName") ||
       instrumentId ||
-      `성부 ${partIndex + 1}`;
+      `Part ${partIndex + 1}`;
 
     return {
       id: `part-${partIndex + 1}`,
@@ -200,7 +200,7 @@ function partForStaff(parts, staffId, fallbackIndex) {
     parts.find((part) => part.staffIds.includes(staffId)) ??
     parts[Math.min(fallbackIndex, parts.length - 1)] ?? {
       id: `part-${fallbackIndex + 1}`,
-      name: `성부 ${fallbackIndex + 1}`,
+      name: `Part ${fallbackIndex + 1}`,
       staffIds: [staffId],
     }
   );
@@ -227,6 +227,7 @@ function scoreTitle(scoreElement, fallbackName) {
   const titleNames = ["workTitle", "movementTitle"];
   const genericTitles = new Set([
     "이름 없는 악보",
+    "Untitled score",
     "untitled score",
     "untitled",
   ]);
@@ -249,7 +250,7 @@ function scoreTitle(scoreElement, fallbackName) {
     return visibleTitle.replace(/\s+/g, " ").trim();
   }
 
-  return fallbackName.replace(/\.(mscz|mscx)$/i, "") || "제목 없음";
+  return fallbackName.replace(/\.(mscz|mscx)$/i, "") || "Untitled";
 }
 
 export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
@@ -273,7 +274,7 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
   if (!parts.length) {
     parts = staffElements.map((staff, index) => ({
       id: `part-${index + 1}`,
-      name: `성부 ${index + 1}`,
+      name: `Part ${index + 1}`,
       staffIds: [staff.getAttribute("id") || String(index + 1)],
       clef: staffClef(staff),
     }));
