@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-07-27T16:21:30.137Z",
+  "generatedAt": "2026-07-28T02:21:50.967Z",
   "scores": [
+    {
+      "name": "아틀란티스 소녀",
+      "fileName": "atlantis-princess.mscz",
+      "path": "assets/scores/atlantis-princess.mscz",
+      "format": "mscz",
+      "size": 206244
+    },
     {
       "name": "And July",
       "fileName": "and-july.mscz",
@@ -16,6 +23,13 @@
       "size": 266876
     },
     {
+      "name": "Danny Boy",
+      "fileName": "danny-boy.mscz",
+      "path": "assets/scores/danny-boy.mscz",
+      "format": "mscz",
+      "size": 194946
+    },
+    {
       "name": "DUMDi DUMDi",
       "fileName": "dumdi.mscz",
       "path": "assets/scores/dumdi.mscz",
@@ -28,6 +42,13 @@
       "path": "assets/scores/heal-the-world.mscz",
       "format": "mscz",
       "size": 277996
+    },
+    {
+      "name": "The girl from Ipanema",
+      "fileName": "the-girl-from-ipanema.mscz",
+      "path": "assets/scores/the-girl-from-ipanema.mscz",
+      "format": "mscz",
+      "size": 217102
     }
   ]
 }

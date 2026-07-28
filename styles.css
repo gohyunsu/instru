@@ -1213,11 +1213,12 @@ button:focus-visible {
 
 .site-footer {
   margin-top: auto;
-  padding: 10px 10px 2px;
+  padding: 10px 0 2px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: clamp(8.5px, 2.6vw, 9px);
   line-height: 1.55;
   text-align: center;
+  white-space: nowrap;
 }
 
 .sr-only {
