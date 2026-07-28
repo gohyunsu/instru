@@ -14,7 +14,13 @@ import { VerticalPitchGraph } from "./pitch-graph.js";
 import { PitchStabilizer } from "./pitch-stabilizer.js";
 import { measureIndexAtPosition } from "./score-lyrics.js";
 import { LiveScoreNotation } from "./score-notation.js";
-import { MuseScorePlayer } from "./score-player.js";
+import {
+  decibelsToGain,
+  MuseScorePlayer,
+} from "./score-player.js";
+
+const PART_VOLUME_MIN_DB = -30;
+const PART_VOLUME_MAX_DB = 9;
 
 const elements = {
   themeToggle: document.querySelector("#themeToggle"),
@@ -60,10 +66,6 @@ const elements = {
   scoreCurrentTime: document.querySelector("#scoreCurrentTime"),
   scoreDuration: document.querySelector("#scoreDuration"),
   partList: document.querySelector("#partList"),
-  selectedPartVolume: document.querySelector("#selectedPartVolume"),
-  selectedPartVolumeLabel: document.querySelector("#selectedPartVolumeLabel"),
-  selectedPartVolumeInput: document.querySelector("#selectedPartVolumeInput"),
-  selectedPartVolumeValue: document.querySelector("#selectedPartVolumeValue"),
   scoreMessage: document.querySelector("#scoreMessage"),
 };
 
@@ -604,6 +606,42 @@ function scoreErrorMessage(error) {
   return messages[error?.message] ?? "Could not read this score.";
 }
 
+function partVolumeLabel(decibels, enabled) {
+  if (decibels <= PART_VOLUME_MIN_DB) {
+    return "Off";
+  }
+  if (!enabled) {
+    return "Muted";
+  }
+  const sign = decibels > 0 ? "+" : decibels < 0 ? "−" : "";
+  return `${sign}${Math.abs(decibels)} dB`;
+}
+
+function updatePartMixerControl(button, input, output) {
+  const decibels = Number(input.value);
+  const enabled = button.classList.contains("is-enabled");
+  const label = partVolumeLabel(decibels, enabled);
+  const row = button.closest(".part-row");
+  output.textContent = label;
+  input.setAttribute("aria-valuetext", label);
+  row?.classList.toggle("is-muted", !enabled);
+  row?.classList.toggle(
+    "is-boosted",
+    enabled && decibels > 0,
+  );
+}
+
+function setPartEnabled(button, part, input, output, enabled) {
+  if (enabled && Number(input.value) <= PART_VOLUME_MIN_DB) {
+    input.value = "0";
+    scorePlayer.setPartVolume(part.id, 1);
+  }
+  button.classList.toggle("is-enabled", enabled);
+  button.setAttribute("aria-pressed", String(enabled));
+  scorePlayer.setPartEnabled(part.id, enabled);
+  updatePartMixerControl(button, input, output);
+}
+
 function setScorePart(partId) {
   const nextPartId = state.selectedPartId === partId ? null : partId;
   state.selectedPartId = nextPartId;
@@ -611,31 +649,23 @@ function setScorePart(partId) {
   for (const button of elements.partList.querySelectorAll(".part-toggle")) {
     const selected = button.dataset.partId === nextPartId;
     button.classList.toggle("is-score-source", selected);
+    button.closest(".part-row")?.classList.toggle(
+      "is-score-source",
+      selected,
+    );
     button.setAttribute("aria-current", selected ? "true" : "false");
   }
 
   if (nextPartId) {
-    const part = state.score?.parts.find(
-      (candidate) => candidate.id === nextPartId,
-    );
-    const volume = Math.round(
-      scorePlayer.getPartVolume(nextPartId) * 100,
-    );
     scoreNotation.setPart(nextPartId);
-    elements.selectedPartVolumeLabel.textContent =
-      `${part?.name ?? "Part"} volume`;
-    elements.selectedPartVolumeInput.value = String(volume);
-    elements.selectedPartVolumeValue.textContent = `${volume}%`;
-    elements.selectedPartVolume.dataset.boosted = String(volume > 100);
     navigator.vibrate?.(12);
   } else {
     scoreNotation.setPart(null);
   }
   elements.liveScorePanel.hidden = !nextPartId;
-  elements.selectedPartVolume.hidden = !nextPartId;
 }
 
-function bindPartControl(button, part) {
+function bindPartControl(button, part, input, output) {
   const longPressDuration = 520;
   let longPressTimer = null;
   let longPressed = false;
@@ -687,10 +717,28 @@ function bindPartControl(button, part) {
       longPressed = false;
       return;
     }
-    const enabled = !button.classList.contains("is-enabled");
-    button.classList.toggle("is-enabled", enabled);
-    button.setAttribute("aria-pressed", String(enabled));
-    scorePlayer.setPartEnabled(part.id, enabled);
+    setPartEnabled(
+      button,
+      part,
+      input,
+      output,
+      !button.classList.contains("is-enabled"),
+    );
+  });
+
+  input.addEventListener("input", () => {
+    const decibels = Number(input.value);
+    const off = decibels <= PART_VOLUME_MIN_DB;
+    scorePlayer.setPartVolume(
+      part.id,
+      off ? 0 : decibelsToGain(decibels),
+    );
+    if (off !== !button.classList.contains("is-enabled")) {
+      button.classList.toggle("is-enabled", !off);
+      button.setAttribute("aria-pressed", String(!off));
+      scorePlayer.setPartEnabled(part.id, !off);
+    }
+    updatePartMixerControl(button, input, output);
   });
 }
 
@@ -707,11 +755,18 @@ function renderScore(score) {
   elements.scoreDuration.textContent = formatTime(score.duration);
   elements.partList.replaceChildren();
 
-  for (const part of score.parts) {
+  for (const [index, part] of score.parts.entries()) {
+    const row = document.createElement("div");
+    row.className = "part-row";
     const button = document.createElement("button");
+    const name = document.createElement("span");
+    const input = document.createElement("input");
+    const output = document.createElement("output");
     button.type = "button";
     button.className = "part-toggle is-enabled";
-    button.textContent = part.name;
+    name.className = "part-name";
+    name.textContent = part.name;
+    button.append(name);
     button.dataset.partId = part.id;
     button.setAttribute("aria-pressed", "true");
     button.setAttribute("aria-current", "false");
@@ -719,15 +774,27 @@ function renderScore(score) {
       "aria-label",
       `${part.name}. Tap to mute or unmute. Hold to open its score and lyrics.`,
     );
-    bindPartControl(button, part);
-    elements.partList.append(button);
+    input.id = `part-volume-${index + 1}`;
+    input.className = "part-volume";
+    input.type = "range";
+    input.min = String(PART_VOLUME_MIN_DB);
+    input.max = String(PART_VOLUME_MAX_DB);
+    input.step = "1";
+    input.value = "0";
+    input.setAttribute("aria-label", `${part.name} volume`);
+    input.setAttribute("aria-valuetext", "0 dB");
+    output.className = "part-volume-value";
+    output.setAttribute("for", input.id);
+    output.textContent = "0 dB";
+    bindPartControl(button, part, input, output);
+    row.append(button, input, output);
+    elements.partList.append(row);
   }
 
   elements.scoreLibrary.hidden = true;
   elements.scoreImport.hidden = true;
   elements.scorePlayerPanel.hidden = false;
   elements.liveScorePanel.hidden = true;
-  elements.selectedPartVolume.hidden = true;
   elements.playbackVisualizer.hidden = false;
   scoreNotation.setScore(score);
   setScoreMessage("");
@@ -835,7 +902,6 @@ function resetScoreSelection() {
   state.score = null;
   configureMeasureNavigation();
   elements.scorePlayerPanel.hidden = true;
-  elements.selectedPartVolume.hidden = true;
   elements.scoreLibrary.hidden = false;
   elements.scoreImport.hidden = false;
   elements.scoreFileInput.value = "";
@@ -983,16 +1049,6 @@ elements.scoreMeasureInput.addEventListener("keydown", (event) => {
     elements.scoreMeasureInput.blur();
   }
 });
-elements.selectedPartVolumeInput.addEventListener("input", () => {
-  if (!state.selectedPartId) {
-    return;
-  }
-  const volume = Number(elements.selectedPartVolumeInput.value);
-  elements.selectedPartVolumeValue.textContent = `${volume}%`;
-  elements.selectedPartVolume.dataset.boosted = String(volume > 100);
-  scorePlayer.setPartVolume(state.selectedPartId, volume / 100);
-});
-
 document.addEventListener(
   "pointerdown",
   () => {

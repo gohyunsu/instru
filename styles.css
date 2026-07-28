@@ -1163,37 +1163,62 @@ button:focus-visible {
 }
 
 .part-list {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 7px;
+}
+
+.part-row {
+  display: grid;
+  grid-template-columns:
+    minmax(88px, 0.8fr)
+    minmax(64px, 1fr)
+    42px;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.part-row.is-score-source {
+  grid-template-columns:
+    minmax(128px, 1.2fr)
+    minmax(44px, 0.55fr)
+    42px;
 }
 
 .part-toggle {
   display: inline-flex;
-  min-height: 38px;
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
   align-items: center;
-  gap: 7px;
-  max-width: 100%;
-  padding: 0 11px;
+  gap: 6px;
+  padding: 0 9px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: transparent;
   color: var(--muted);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 650;
   touch-action: manipulation;
   user-select: none;
   -webkit-touch-callout: none;
 }
 
+.part-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .part-toggle::before {
-  content: "";
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   flex: 0 0 auto;
   border: 1px solid currentColor;
   border-radius: 50%;
+  content: "";
 }
 
 .part-toggle.is-enabled {
@@ -1217,6 +1242,7 @@ button:focus-visible {
 
 .part-toggle.is-score-source::after {
   content: "Score";
+  margin-left: auto;
   padding: 2px 5px;
   border-radius: 999px;
   background: var(--accent);
@@ -1225,43 +1251,35 @@ button:focus-visible {
   font-weight: 760;
 }
 
-.selected-part-volume {
-  display: grid;
-  gap: 6px;
-  padding: 10px 12px 8px;
-  border: 1px solid var(--accent-line);
-  border-radius: 14px;
-  background: var(--accent-soft);
-}
-
-.volume-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 650;
-}
-
-.selected-part-volume output {
-  min-width: 34px;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  transition: color 160ms ease;
-}
-
-.selected-part-volume[data-boosted="true"] output {
-  color: var(--accent);
-}
-
-.selected-part-volume input[type="range"] {
+.part-volume {
   width: 100%;
+  min-width: 0;
   height: 24px;
   margin: 0;
   accent-color: var(--accent);
   cursor: pointer;
+  transition: opacity 160ms ease;
+}
+
+.part-volume-value {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 680;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+  transition:
+    color 160ms ease,
+    opacity 160ms ease;
+}
+
+.part-row.is-boosted .part-volume-value {
+  color: var(--accent);
+}
+
+.part-row.is-muted .part-volume,
+.part-row.is-muted .part-volume-value {
+  opacity: 0.52;
 }
 
 .score-message {

@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { MuseScorePlayer } from "../src/score-player.js";
+import {
+  decibelsToGain,
+  MAX_PART_DECIBELS,
+  MuseScorePlayer,
+} from "../src/score-player.js";
 
 globalThis.window = {
   clearInterval,
@@ -73,10 +77,19 @@ test("part volume can be boosted and is clamped to a safe range", () => {
   assert.equal(player.getPartVolume("soprano"), 1.65);
 
   player.setPartVolume("soprano", 4);
-  assert.equal(player.getPartVolume("soprano"), 2);
+  assert.equal(
+    player.getPartVolume("soprano"),
+    decibelsToGain(MAX_PART_DECIBELS),
+  );
 
   player.setPartVolume("soprano", -1);
   assert.equal(player.getPartVolume("soprano"), 0);
+});
+
+test("converts mixer decibels to linear audio gain", () => {
+  assert.equal(decibelsToGain(0), 1);
+  assert.ok(Math.abs(decibelsToGain(6) - 1.9953) < 0.0001);
+  assert.ok(Math.abs(decibelsToGain(-6) - 0.5012) < 0.0001);
 });
 
 test("score playback loops by default at the end", () => {

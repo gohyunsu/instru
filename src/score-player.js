@@ -2,10 +2,19 @@ import { midiToFrequency } from "./music.js";
 
 const SCHEDULE_INTERVAL_MS = 80;
 const LOOK_AHEAD_SECONDS = 0.45;
+const MASTER_GAIN = 0.18;
+export const MAX_PART_DECIBELS = 9;
 
 function clamp(value, minimum, maximum) {
   return Math.max(minimum, Math.min(maximum, value));
 }
+
+export function decibelsToGain(decibels) {
+  const value = Number(decibels);
+  return Number.isFinite(value) ? 10 ** (value / 20) : 1;
+}
+
+const MAX_PART_GAIN = decibelsToGain(MAX_PART_DECIBELS);
 
 export class MuseScorePlayer {
   constructor({ onStateChange = () => {}, onProgress = () => {} } = {}) {
@@ -56,7 +65,7 @@ export class MuseScorePlayer {
       this.master = this.context.createGain();
       this.compressor = this.context.createDynamicsCompressor();
       this.analyser = this.context.createAnalyser();
-      this.master.gain.value = 0.13;
+      this.master.gain.value = MASTER_GAIN;
       this.compressor.threshold.value = -15;
       this.compressor.knee.value = 18;
       this.compressor.ratio.value = 5;
@@ -305,7 +314,7 @@ export class MuseScorePlayer {
     if (!this.score?.parts.some((part) => part.id === partId)) {
       return;
     }
-    const nextVolume = clamp(Number(volume) || 0, 0, 2);
+    const nextVolume = clamp(Number(volume) || 0, 0, MAX_PART_GAIN);
     this.partVolumes.set(partId, nextVolume);
 
     const output = this.partGains.get(partId);
