@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   clefForEvents,
   lyricsForPart,
+  measureEntryOffset,
   noteSpelling,
   positionForScrollLeft,
   scrollLeftForPosition,
@@ -69,6 +70,35 @@ test("maps horizontal score exploration to playback time", () => {
   assert.equal(scrollLeftForPosition(12.5), 950);
   assert.equal(positionForScrollLeft(950, 20), 12.5);
   assert.equal(positionForScrollLeft(5000, 20), 20);
+});
+
+test("adds entry space to notes and lyrics exactly on a measure boundary", () => {
+  const measures = [
+    { startTick: 0, startSeconds: 0 },
+    { startTick: 1920, startSeconds: 2 },
+  ];
+
+  assert.equal(
+    measureEntryOffset(
+      { startTick: 1920, startSeconds: 2 },
+      measures,
+    ),
+    12,
+  );
+  assert.equal(
+    measureEntryOffset(
+      { startTick: 1680, startSeconds: 1.75 },
+      measures,
+    ),
+    0,
+  );
+  assert.equal(
+    measureEntryOffset(
+      { startSeconds: 2 },
+      [{ startSeconds: 2 }],
+    ),
+    12,
+  );
 });
 
 test("places one lyric verse on the selected part timeline", () => {

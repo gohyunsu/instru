@@ -55,6 +55,7 @@ const elements = {
   scoreMeasureTotal: document.querySelector("#scoreMeasureTotal"),
   playbackVisualizer: document.querySelector("#playbackVisualizer"),
   scorePlayButton: document.querySelector("#scorePlayButton"),
+  scoreLoopButton: document.querySelector("#scoreLoopButton"),
   scoreProgress: document.querySelector("#scoreProgress"),
   scoreCurrentTime: document.querySelector("#scoreCurrentTime"),
   scoreDuration: document.querySelector("#scoreDuration"),
@@ -947,6 +948,16 @@ elements.scoreImport.addEventListener("drop", async (event) => {
 });
 
 elements.scorePlayButton.addEventListener("click", toggleScorePlayback);
+elements.scoreLoopButton.addEventListener("click", () => {
+  const looping = !scorePlayer.looping;
+  scorePlayer.setLooping(looping);
+  elements.scoreLoopButton.classList.toggle("is-active", looping);
+  elements.scoreLoopButton.setAttribute("aria-pressed", String(looping));
+  elements.scoreLoopButton.setAttribute(
+    "aria-label",
+    looping ? "Disable loop" : "Enable loop",
+  );
+});
 elements.scoreProgress.addEventListener("pointerdown", () => {
   state.scrubbing = true;
 });

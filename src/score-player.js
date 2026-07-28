@@ -20,6 +20,7 @@ export class MuseScorePlayer {
     this.enabledParts = new Set();
     this.partVolumes = new Map();
     this.partGains = new Map();
+    this.looping = true;
     this.playing = false;
     this.position = 0;
     this.startedAt = 0;
@@ -227,6 +228,15 @@ export class MuseScorePlayer {
   }
 
   finish() {
+    if (this.looping && this.score && this.context) {
+      this.stopNodes();
+      this.position = 0;
+      this.startedAt = this.context.currentTime;
+      this.nextEventIndex = this.findEventIndex(0);
+      this.scheduleUpcoming();
+      return;
+    }
+
     this.playing = false;
     this.position = this.score?.duration ?? 0;
     window.clearInterval(this.scheduler);
@@ -281,6 +291,10 @@ export class MuseScorePlayer {
       this.nextEventIndex = this.findEventIndex(position);
       this.scheduleUpcoming();
     }
+  }
+
+  setLooping(looping) {
+    this.looping = Boolean(looping);
   }
 
   getPartVolume(partId) {

@@ -9,6 +9,7 @@ const STAFF_HEIGHT_WITH_LYRICS = 142;
 const STAFF_GAP = 8;
 const PIXELS_PER_SECOND = 76;
 const EDGE_INSET = 48;
+const MEASURE_ENTRY_OFFSET = 12;
 
 const LETTER_INDEX = {
   C: 0,
@@ -168,6 +169,34 @@ export function positionForScrollLeft(
     0,
     Math.max(0, Number(duration) || 0),
   );
+}
+
+export function measureEntryOffset(
+  item,
+  measures,
+  offset = MEASURE_ENTRY_OFFSET,
+) {
+  const itemTick = Number(item?.startTick);
+  const hasTick =
+    item?.startTick !== undefined && Number.isFinite(itemTick);
+  const itemSeconds = Number(item?.startSeconds);
+  const hasSeconds = Number.isFinite(itemSeconds);
+  const atMeasureStart = (measures ?? []).some((measure) => {
+    const measureTick = Number(measure.startTick);
+    if (
+      hasTick &&
+      measure.startTick !== undefined &&
+      Number.isFinite(measureTick)
+    ) {
+      return Math.abs(itemTick - measureTick) < 0.001;
+    }
+    return (
+      hasSeconds &&
+      Number.isFinite(Number(measure.startSeconds)) &&
+      Math.abs(itemSeconds - Number(measure.startSeconds)) < 0.0001
+    );
+  });
+  return atMeasureStart ? Math.max(0, Number(offset) || 0) : 0;
 }
 
 export function lyricsForPart(score, partId) {
@@ -390,6 +419,13 @@ export class LiveScoreNotation {
     return this.viewportWidth / 2 + scrollLeftForPosition(time);
   }
 
+  xForTimedItem(item) {
+    return (
+      this.xForTime(item.startSeconds) +
+      measureEntryOffset(item, this.score?.measures)
+    );
+  }
+
   noteY(event, clef, staffBottom) {
     const step = staffStepForNote(event.midi, event.tpc, clef);
     return {
@@ -400,7 +436,7 @@ export class LiveScoreNotation {
   }
 
   renderEvent(event, clef, group, staffBottom) {
-    const startX = this.xForTime(event.startSeconds);
+    const startX = this.xForTimedItem(event);
     const endX = this.xForTime(
       event.startSeconds + event.durationSeconds,
     );
@@ -611,7 +647,7 @@ export class LiveScoreNotation {
       const lyricElement = createSvgElement(
         "text",
         {
-          x: this.xForTime(lyric.startSeconds),
+          x: this.xForTimedItem(lyric),
           y: 125,
           class: "notation-lyric",
           "data-lyric-id": lyric.id,

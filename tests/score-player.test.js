@@ -79,6 +79,50 @@ test("part volume can be boosted and is clamped to a safe range", () => {
   assert.equal(player.getPartVolume("soprano"), 0);
 });
 
+test("score playback loops by default at the end", () => {
+  const progress = [];
+  const player = new MuseScorePlayer({
+    onProgress: (position) => progress.push(position),
+  });
+  player.load(score);
+  player.context = { currentTime: 12 };
+  player.playing = true;
+  player.position = score.duration;
+  progress.length = 0;
+  let scheduled = 0;
+  player.scheduleUpcoming = () => {
+    scheduled += 1;
+    player.onProgress(player.currentPosition(), score.duration);
+  };
+
+  player.finish();
+
+  assert.equal(player.looping, true);
+  assert.equal(player.playing, true);
+  assert.equal(player.position, 0);
+  assert.equal(player.startedAt, 12);
+  assert.equal(player.nextEventIndex, 0);
+  assert.equal(progress.at(-1), 0);
+  assert.equal(scheduled, 1);
+});
+
+test("score playback can finish when looping is disabled", () => {
+  const states = [];
+  const player = new MuseScorePlayer({
+    onStateChange: (playing) => states.push(playing),
+  });
+  player.load(score);
+  player.setLooping(false);
+  player.playing = true;
+
+  player.finish();
+
+  assert.equal(player.looping, false);
+  assert.equal(player.playing, false);
+  assert.equal(player.position, score.duration);
+  assert.equal(states.at(-1), false);
+});
+
 test("seek positions are clamped to the score duration", () => {
   const player = new MuseScorePlayer();
   player.load(score);
