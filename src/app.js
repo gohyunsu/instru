@@ -19,8 +19,8 @@ import {
   MuseScorePlayer,
 } from "./score-player.js";
 
-const PART_VOLUME_MIN_DB = -30;
-const PART_VOLUME_MAX_DB = 9;
+const PART_VOLUME_MIN_DB = -42;
+const PART_VOLUME_MAX_DB = 15;
 
 const elements = {
   themeToggle: document.querySelector("#themeToggle"),
@@ -649,10 +649,6 @@ function setScorePart(partId) {
   for (const button of elements.partList.querySelectorAll(".part-toggle")) {
     const selected = button.dataset.partId === nextPartId;
     button.classList.toggle("is-score-source", selected);
-    button.closest(".part-row")?.classList.toggle(
-      "is-score-source",
-      selected,
-    );
     button.setAttribute("aria-current", selected ? "true" : "false");
   }
 

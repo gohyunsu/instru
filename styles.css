@@ -1178,13 +1178,6 @@ button:focus-visible {
   gap: 6px;
 }
 
-.part-row.is-score-source {
-  grid-template-columns:
-    minmax(128px, 1.2fr)
-    minmax(44px, 0.55fr)
-    42px;
-}
-
 .part-toggle {
   display: inline-flex;
   width: 100%;
@@ -1238,17 +1231,6 @@ button:focus-visible {
   box-shadow:
     0 0 0 2px var(--surface),
     0 0 0 3px var(--accent-line);
-}
-
-.part-toggle.is-score-source::after {
-  content: "Score";
-  margin-left: auto;
-  padding: 2px 5px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--surface-strong);
-  font-size: 8px;
-  font-weight: 760;
 }
 
 .part-volume {

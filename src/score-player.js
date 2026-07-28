@@ -2,8 +2,8 @@ import { midiToFrequency } from "./music.js";
 
 const SCHEDULE_INTERVAL_MS = 80;
 const LOOK_AHEAD_SECONDS = 0.45;
-const MASTER_GAIN = 0.18;
-export const MAX_PART_DECIBELS = 9;
+export const SCORE_MASTER_GAIN = 0.24;
+export const MAX_PART_DECIBELS = 15;
 
 function clamp(value, minimum, maximum) {
   return Math.max(minimum, Math.min(maximum, value));
@@ -65,12 +65,12 @@ export class MuseScorePlayer {
       this.master = this.context.createGain();
       this.compressor = this.context.createDynamicsCompressor();
       this.analyser = this.context.createAnalyser();
-      this.master.gain.value = MASTER_GAIN;
-      this.compressor.threshold.value = -15;
-      this.compressor.knee.value = 18;
-      this.compressor.ratio.value = 5;
-      this.compressor.attack.value = 0.004;
-      this.compressor.release.value = 0.15;
+      this.master.gain.value = SCORE_MASTER_GAIN;
+      this.compressor.threshold.value = -8;
+      this.compressor.knee.value = 12;
+      this.compressor.ratio.value = 2.5;
+      this.compressor.attack.value = 0.003;
+      this.compressor.release.value = 0.12;
       this.analyser.fftSize = 256;
       this.analyser.minDecibels = -86;
       this.analyser.maxDecibels = -20;
