@@ -5,6 +5,7 @@ import {
   buildTempoMap,
   fractionToTicks,
   isPercussionPartName,
+  preferredTenorPart,
   tickToSeconds,
 } from "../src/musescore-parser.js";
 
@@ -45,4 +46,19 @@ test("recognizes percussion parts that should not be played", () => {
   assert.equal(isPercussionPartName("Percussion"), true);
   assert.equal(isPercussionPartName("드럼"), true);
   assert.equal(isPercussionPartName("Soprano", "voice.soprano"), false);
+});
+
+test("selects an English or Korean tenor part by default", () => {
+  const englishParts = [
+    { id: "s", name: "Soprano" },
+    { id: "t", name: "Tenor" },
+  ];
+  const koreanParts = [
+    { id: "a", name: "알토" },
+    { id: "t", name: "테너 1" },
+  ];
+
+  assert.equal(preferredTenorPart(englishParts)?.id, "t");
+  assert.equal(preferredTenorPart(koreanParts)?.id, "t");
+  assert.equal(preferredTenorPart([{ id: "b", name: "Bass" }]), null);
 });

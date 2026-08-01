@@ -9,7 +9,10 @@ import {
   midiToFrequency,
   midiToNote,
 } from "./music.js";
-import { readMuseScoreFile } from "./musescore-parser.js";
+import {
+  preferredTenorPart,
+  readMuseScoreFile,
+} from "./musescore-parser.js";
 import { VerticalPitchGraph } from "./pitch-graph.js";
 import { PitchStabilizer } from "./pitch-stabilizer.js";
 import { measureIndexAtPosition } from "./score-lyrics.js";
@@ -106,6 +109,7 @@ const scorePlayer = new MuseScorePlayer({
   onStateChange: handleScorePlaybackState,
   onProgress: handleScoreProgress,
 });
+let microphoneStopPromise = Promise.resolve();
 scoreNotation.setSeekHandler((position) => scorePlayer.seek(position));
 
 const visualizerBars = Array.from({ length: 21 }, () => {
@@ -436,7 +440,7 @@ function microphoneErrorMessage(error) {
 }
 
 async function startListening() {
-  if (state.starting) {
+  if (state.mode !== "tuner" || state.starting) {
     return;
   }
 
@@ -449,6 +453,10 @@ async function startListening() {
 
   try {
     await audioEngine.start();
+    if (state.mode !== "tuner") {
+      await audioEngine.stop();
+      return;
+    }
     state.listening = true;
     state.lastVoicedAt = performance.now();
     audioEngine.setProcessing(state.mode === "tuner");
@@ -498,6 +506,9 @@ async function handleStreamEnded() {
   }
 
   await stopListening();
+  if (state.mode !== "tuner") {
+    return;
+  }
   window.clearTimeout(state.reconnectTimer);
   state.reconnectTimer = window.setTimeout(startListening, 700);
 }
@@ -527,6 +538,9 @@ async function requestWakeLock() {
 }
 
 async function recoverAudio() {
+  if (state.mode !== "tuner") {
+    return;
+  }
   if (!state.listening || !audioEngine.active) {
     state.listening = false;
     if (!state.starting) {
@@ -562,7 +576,8 @@ function setMode(mode) {
 
   tonePlayer.stop();
   if (mode === "score") {
-    audioEngine.setProcessing(false);
+    window.clearTimeout(state.reconnectTimer);
+    microphoneStopPromise = stopListening().catch(() => {});
     graph.addGap();
     if (scorePlayer.playing) {
       setStatus("Playing", "tone");
@@ -577,13 +592,14 @@ function setMode(mode) {
     }
   } else {
     scorePlayer.pause();
-    audioEngine.setProcessing(state.listening);
-    if (state.listening) {
-      setStatus("Listening", "listening");
-      state.lastVoicedAt = performance.now();
-    } else {
-      setStatus("Try again", "error");
-    }
+    setStatus("Connecting", "paused");
+    setHelper("Microphone permission required");
+    resetPitchSummary("");
+    microphoneStopPromise.finally(() => {
+      if (state.mode === "tuner") {
+        startListening();
+      }
+    });
   }
 }
 
@@ -642,7 +658,7 @@ function setPartEnabled(button, part, input, output, enabled) {
   updatePartMixerControl(button, input, output);
 }
 
-function setScorePart(partId) {
+function setScorePart(partId, { vibrate = true } = {}) {
   const nextPartId = state.selectedPartId === partId ? null : partId;
   state.selectedPartId = nextPartId;
 
@@ -654,7 +670,9 @@ function setScorePart(partId) {
 
   if (nextPartId) {
     scoreNotation.setPart(nextPartId);
-    navigator.vibrate?.(12);
+    if (vibrate) {
+      navigator.vibrate?.(12);
+    }
   } else {
     scoreNotation.setPart(null);
   }
@@ -793,6 +811,10 @@ function renderScore(score) {
   elements.liveScorePanel.hidden = true;
   elements.playbackVisualizer.hidden = false;
   scoreNotation.setScore(score);
+  const tenorPart = preferredTenorPart(score.parts);
+  if (tenorPart) {
+    setScorePart(tenorPart.id, { vibrate: false });
+  }
   setScoreMessage("");
   if (state.mode === "score") {
     setStatus("Ready to play");

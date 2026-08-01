@@ -121,6 +121,22 @@ export function isPercussionPartName(name, instrumentId = "") {
   );
 }
 
+export function preferredTenorPart(parts = []) {
+  const normalizedParts = parts.map((part) => ({
+    part,
+    name: String(part?.name ?? "").trim().toLocaleLowerCase(),
+  }));
+  const tenorNames = ["tenor", "테너"];
+
+  return (
+    normalizedParts.find(({ name }) => tenorNames.includes(name))?.part ??
+    normalizedParts.find(({ name }) =>
+      tenorNames.some((tenorName) => name.includes(tenorName)),
+    )?.part ??
+    null
+  );
+}
+
 function staffClef(staff) {
   const clef = staff?.getElementsByTagName("Clef")[0];
   if (!clef) {

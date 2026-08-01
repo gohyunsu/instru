@@ -1,6 +1,13 @@
 {
-  "generatedAt": "2026-07-28T02:21:50.967Z",
+  "generatedAt": "2026-08-01T20:29:35.909Z",
   "scores": [
+    {
+      "name": "봄날",
+      "fileName": "봄날.mscz",
+      "path": "assets/scores/봄날.mscz",
+      "format": "mscz",
+      "size": 124177
+    },
     {
       "name": "아틀란티스 소녀",
       "fileName": "atlantis-princess.mscz",
