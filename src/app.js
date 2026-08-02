@@ -384,14 +384,16 @@ function handleToneState(playing) {
   state.playingTone = playing;
   audioEngine.setProcessing(!playing && state.mode === "tuner");
 
+  if (!playing) {
+    state.activeToneButton?.classList.remove("is-playing");
+    state.activeToneButton = null;
+  }
   if (state.mode !== "tuner") {
     return;
   }
   if (playing) {
     setStatus("Reference tone", "tone");
   } else {
-    state.activeToneButton?.classList.remove("is-playing");
-    state.activeToneButton = null;
     if (state.listening) {
       setStatus("Listening", "listening");
       state.lastVoicedAt = performance.now();
@@ -574,8 +576,8 @@ function setMode(mode) {
     button.setAttribute("aria-pressed", String(active));
   }
 
-  tonePlayer.stop();
   if (mode === "score") {
+    tonePlayer.suspend().catch(() => {});
     window.clearTimeout(state.reconnectTimer);
     microphoneStopPromise = stopListening().catch(() => {});
     graph.addGap();
@@ -591,7 +593,12 @@ function setMode(mode) {
       scoreNotation.render(position, true);
     }
   } else {
+    tonePlayer.stop();
     scorePlayer.pause();
+    scorePlayer.suspendAudio().catch(() => {});
+    tonePlayer.prepare().catch(() => {
+      // The reference button will retry inside its own user gesture.
+    });
     setStatus("Connecting", "paused");
     setHelper("Microphone permission required");
     resetPitchSummary("");

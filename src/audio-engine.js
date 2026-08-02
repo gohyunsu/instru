@@ -133,6 +133,17 @@ export class ReferenceTonePlayer {
     await this.context.resume();
   }
 
+  async prepare() {
+    await this.ensureContext();
+  }
+
+  async suspend() {
+    this.stop();
+    if (this.context?.state === "running") {
+      await this.context.suspend();
+    }
+  }
+
   async play(frequency, duration = 0.9) {
     await this.ensureContext();
     this.stop(false);
@@ -145,8 +156,8 @@ export class ReferenceTonePlayer {
     oscillator.type = "sine";
     oscillator.frequency.setValueAtTime(frequency, now);
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.13, now + 0.025);
-    gain.gain.setValueAtTime(0.13, Math.max(now + 0.03, releaseAt - 0.08));
+    gain.gain.exponentialRampToValueAtTime(0.18, now + 0.025);
+    gain.gain.setValueAtTime(0.18, Math.max(now + 0.03, releaseAt - 0.08));
     gain.gain.exponentialRampToValueAtTime(0.0001, releaseAt);
 
     oscillator.connect(gain).connect(this.context.destination);

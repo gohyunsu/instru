@@ -2,9 +2,147 @@ import { EXACT_CENTS } from "./music.js";
 
 const HISTORY_MS = 8000;
 const MAX_GAP_MS = 260;
+export const GRAPH_CENTS_RANGE = 60;
 
 function clamp(value, minimum, maximum) {
   return Math.max(minimum, Math.min(maximum, value));
+}
+
+function median(values) {
+  const sorted = [...values].sort((left, right) => left - right);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle];
+}
+
+function wrapBoundary(previous, point) {
+  const noteDelta = point.note - previous.note;
+  if (Math.abs(noteDelta) !== 1) {
+    return null;
+  }
+
+  const direction = Math.sign(noteDelta);
+  const previousCents = previous.cents;
+  const nextUnwrappedCents = point.cents + noteDelta * 100;
+  const crossingCents = direction * 50;
+  const centsDelta = nextUnwrappedCents - previousCents;
+  const crossingRatio =
+    Math.abs(centsDelta) > 0.001
+      ? clamp((crossingCents - previousCents) / centsDelta, 0, 1)
+      : 0.5;
+  const time =
+    previous.time + (point.time - previous.time) * crossingRatio;
+  const confidence = Math.min(
+    previous.confidence ?? 1,
+    point.confidence ?? 1,
+  );
+
+  return {
+    outgoing: {
+      ...previous,
+      time,
+      cents: direction * GRAPH_CENTS_RANGE,
+      trendCents: direction * GRAPH_CENTS_RANGE,
+      confidence,
+    },
+    incoming: {
+      ...point,
+      time,
+      cents: -direction * GRAPH_CENTS_RANGE,
+      trendCents: -direction * GRAPH_CENTS_RANGE,
+      confidence,
+    },
+  };
+}
+
+export function splitPitchTrace(points, maxGapMs = MAX_GAP_MS) {
+  const chunks = [];
+  let chunk = [];
+
+  for (const point of points) {
+    const previous = chunk.at(-1);
+    if (point.gap) {
+      if (chunk.length) {
+        chunks.push(chunk);
+      }
+      chunk = [];
+      continue;
+    }
+
+    if (previous && point.time - previous.time > maxGapMs) {
+      chunks.push(chunk);
+      chunk = [point];
+      continue;
+    }
+
+    if (previous && point.note !== previous.note) {
+      const boundary = wrapBoundary(previous, point);
+      if (boundary) {
+        chunk.push(boundary.outgoing);
+        chunks.push(chunk);
+        chunk = [boundary.incoming, point];
+      } else {
+        chunks.push(chunk);
+        chunk = [point];
+      }
+      continue;
+    }
+
+    chunk.push(point);
+  }
+
+  if (chunk.length) {
+    chunks.push(chunk);
+  }
+  return chunks;
+}
+
+export class PitchTraceSmoother {
+  constructor({ windowSize = 3, stableTimeMs = 230, movingTimeMs = 105 } = {}) {
+    this.windowSize = windowSize;
+    this.stableTimeMs = stableTimeMs;
+    this.movingTimeMs = movingTimeMs;
+    this.reset();
+  }
+
+  reset() {
+    this.note = null;
+    this.samples = [];
+    this.value = null;
+    this.lastTime = null;
+  }
+
+  update({ time, cents, note, confidence = 1 }) {
+    const noteChanged = this.note !== null && note !== this.note;
+    const stale =
+      this.lastTime !== null && time - this.lastTime > MAX_GAP_MS;
+
+    if (noteChanged || stale || this.value === null) {
+      this.note = note;
+      this.samples = [cents];
+      this.value = cents;
+      this.lastTime = time;
+      return cents;
+    }
+
+    this.note = note;
+    this.samples.push(cents);
+    if (this.samples.length > this.windowSize) {
+      this.samples.shift();
+    }
+
+    const target = median(this.samples);
+    const distance = Math.abs(target - this.value);
+    const timeConstant =
+      distance > 11 ? this.movingTimeMs : this.stableTimeMs;
+    const elapsed = clamp(time - this.lastTime, 16, MAX_GAP_MS);
+    const baseAlpha = 1 - Math.exp(-elapsed / timeConstant);
+    const confidenceWeight = 0.7 + 0.3 * clamp(confidence, 0, 1);
+    this.value += (target - this.value) * baseAlpha * confidenceWeight;
+    this.lastTime = time;
+    return this.value;
+  }
 }
 
 export class VerticalPitchGraph {
@@ -12,6 +150,7 @@ export class VerticalPitchGraph {
     this.canvas = canvas;
     this.context = canvas.getContext("2d");
     this.points = [];
+    this.smoother = new PitchTraceSmoother();
     this.width = 0;
     this.height = 0;
     this.running = true;
@@ -23,20 +162,27 @@ export class VerticalPitchGraph {
   }
 
   addPoint({ time = performance.now(), cents, note, confidence = 1 }) {
-    this.points.push({ time, cents, note, confidence });
+    const trendCents = this.smoother.update({
+      time,
+      cents,
+      note,
+      confidence,
+    });
+    this.points.push({ time, cents, trendCents, note, confidence });
     this.trim(time);
   }
 
   addGap(time = performance.now()) {
     const previous = this.points.at(-1);
-    if (!previous || previous.gap) {
-      return;
+    if (previous && !previous.gap) {
+      this.points.push({ time, gap: true });
     }
-    this.points.push({ time, gap: true });
+    this.smoother.reset();
   }
 
   clear() {
     this.points = [];
+    this.smoother.reset();
   }
 
   refreshTheme() {
@@ -90,7 +236,8 @@ export class VerticalPitchGraph {
   }
 
   xForCents(cents, left, width) {
-    return left + ((clamp(cents, -50, 50) + 50) / 100) * width;
+    const range = GRAPH_CENTS_RANGE;
+    return left + ((clamp(cents, -range, range) + range) / (range * 2)) * width;
   }
 
   yForTime(time, now, top, height) {
@@ -139,29 +286,9 @@ export class VerticalPitchGraph {
     const visible = this.points.filter(
       (point) => point.time >= now - HISTORY_MS && point.time <= now + 50,
     );
-    const chunks = [];
-    let chunk = [];
-
-    for (const point of visible) {
-      const previous = chunk.at(-1);
-      const disconnected =
-        point.gap ||
-        (previous &&
-          point.time - previous.time > MAX_GAP_MS);
-
-      if (disconnected) {
-        if (chunk.length > 1) {
-          chunks.push(chunk);
-        }
-        chunk = [];
-      }
-      if (!point.gap) {
-        chunk.push(point);
-      }
-    }
-    if (chunk.length > 1) {
-      chunks.push(chunk);
-    }
+    const chunks = splitPitchTrace(visible).filter(
+      (points) => points.length > 1,
+    );
 
     const pitchGradient = context.createLinearGradient(
       left,
@@ -170,72 +297,95 @@ export class VerticalPitchGraph {
       0,
     );
     pitchGradient.addColorStop(0, colors.low);
-    pitchGradient.addColorStop(0.42, colors.low);
-    pitchGradient.addColorStop(0.48, colors.accent);
-    pitchGradient.addColorStop(0.52, colors.accent);
-    pitchGradient.addColorStop(0.58, colors.high);
+    pitchGradient.addColorStop(0.4, colors.low);
+    pitchGradient.addColorStop(0.45, colors.accent);
+    pitchGradient.addColorStop(0.55, colors.accent);
+    pitchGradient.addColorStop(0.6, colors.high);
     pitchGradient.addColorStop(1, colors.high);
 
-    for (const points of chunks) {
-      const mapped = points.map((point) => ({
-        x: this.xForCents(point.cents, left, plotWidth),
-        y: this.yForTime(point.time, now, top, plotHeight),
-      }));
-      const confidence =
-        points.reduce((sum, point) => sum + point.confidence, 0) /
-        points.length;
-      const newestAge = now - points.at(-1).time;
-      const ageAlpha = 0.32 + 0.68 * clamp(1 - newestAge / HISTORY_MS, 0, 1);
+    const drawChunks = ({
+      valueKey,
+      lineWidth,
+      glowWidth = 0,
+      alpha = 1,
+    }) => {
+      for (const points of chunks) {
+        const mapped = points.map((point) => ({
+          x: this.xForCents(point[valueKey], left, plotWidth),
+          y: this.yForTime(point.time, now, top, plotHeight),
+        }));
+        const confidence =
+          points.reduce((sum, point) => sum + point.confidence, 0) /
+          points.length;
+        const newestAge = now - points.at(-1).time;
+        const ageAlpha =
+          0.32 + 0.68 * clamp(1 - newestAge / HISTORY_MS, 0, 1);
 
-      context.save();
-      context.globalAlpha = ageAlpha * clamp(confidence, 0.45, 1);
-      context.lineCap = "round";
-      context.lineJoin = "round";
-      context.beginPath();
-      context.moveTo(mapped[0].x, mapped[0].y);
+        context.save();
+        context.globalAlpha =
+          alpha * ageAlpha * clamp(confidence, 0.45, 1);
+        context.lineCap = "round";
+        context.lineJoin = "round";
+        context.beginPath();
+        context.moveTo(mapped[0].x, mapped[0].y);
 
-      if (mapped.length === 2) {
-        context.lineTo(mapped[1].x, mapped[1].y);
-      } else {
-        for (let index = 1; index < mapped.length - 1; index += 1) {
-          const current = mapped[index];
-          const next = mapped[index + 1];
-          const midpointX = (current.x + next.x) / 2;
-          const midpointY = (current.y + next.y) / 2;
-          context.quadraticCurveTo(
-            current.x,
-            current.y,
-            midpointX,
-            midpointY,
-          );
+        if (mapped.length === 2) {
+          context.lineTo(mapped[1].x, mapped[1].y);
+        } else {
+          for (let index = 1; index < mapped.length - 1; index += 1) {
+            const current = mapped[index];
+            const next = mapped[index + 1];
+            const midpointX = (current.x + next.x) / 2;
+            const midpointY = (current.y + next.y) / 2;
+            context.quadraticCurveTo(
+              current.x,
+              current.y,
+              midpointX,
+              midpointY,
+            );
+          }
+          const last = mapped.at(-1);
+          context.quadraticCurveTo(last.x, last.y, last.x, last.y);
         }
-        const last = mapped.at(-1);
-        context.quadraticCurveTo(last.x, last.y, last.x, last.y);
-      }
 
-      context.strokeStyle = colors.accentSoft;
-      context.lineWidth = 8;
-      context.shadowBlur = 18;
-      context.shadowColor = colors.accentSoft;
-      context.stroke();
-      context.strokeStyle = pitchGradient;
-      context.lineWidth = 2.8;
-      context.shadowBlur = 8;
-      context.stroke();
-      context.restore();
-    }
+        if (glowWidth > 0) {
+          context.strokeStyle = colors.accentSoft;
+          context.lineWidth = glowWidth;
+          context.shadowBlur = 12;
+          context.shadowColor = colors.accentSoft;
+          context.stroke();
+        }
+        context.strokeStyle = pitchGradient;
+        context.lineWidth = lineWidth;
+        context.shadowBlur = glowWidth > 0 ? 5 : 0;
+        context.stroke();
+        context.restore();
+      }
+    };
+
+    drawChunks({
+      valueKey: "cents",
+      lineWidth: 1.15,
+      alpha: 0.24,
+    });
+    drawChunks({
+      valueKey: "trendCents",
+      lineWidth: 2.8,
+      glowWidth: 6.5,
+      alpha: 0.94,
+    });
 
     const latest = [...visible].reverse().find((point) => !point.gap);
-    if (!latest || now - latest.time > 260) {
+    if (!latest || now - latest.time > MAX_GAP_MS) {
       return;
     }
 
-    const latestX = this.xForCents(latest.cents, left, plotWidth);
+    const latestX = this.xForCents(latest.trendCents, left, plotWidth);
     const latestY = this.yForTime(latest.time, now, top, plotHeight);
     const color =
-      Math.abs(latest.cents) <= EXACT_CENTS
+      Math.abs(latest.trendCents) <= EXACT_CENTS
         ? colors.accent
-        : latest.cents < 0
+        : latest.trendCents < 0
           ? colors.low
           : colors.high;
 

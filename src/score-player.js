@@ -236,6 +236,12 @@ export class MuseScorePlayer {
     this.onStateChange(false);
   }
 
+  async suspendAudio() {
+    if (this.context?.state === "running") {
+      await this.context.suspend();
+    }
+  }
+
   finish() {
     if (this.looping && this.score && this.context) {
       this.stopNodes();

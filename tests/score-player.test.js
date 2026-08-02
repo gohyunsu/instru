@@ -138,6 +138,23 @@ test("score playback can finish when looping is disabled", () => {
   assert.equal(states.at(-1), false);
 });
 
+test("score audio can be suspended between modes and resumed on play", async () => {
+  const player = new MuseScorePlayer();
+  let suspendCount = 0;
+  player.context = {
+    state: "running",
+    async suspend() {
+      suspendCount += 1;
+      this.state = "suspended";
+    },
+  };
+
+  await player.suspendAudio();
+
+  assert.equal(suspendCount, 1);
+  assert.equal(player.context.state, "suspended");
+});
+
 test("seek positions are clamped to the score duration", () => {
   const player = new MuseScorePlayer();
   player.load(score);
