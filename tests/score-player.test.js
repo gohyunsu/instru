@@ -91,7 +91,7 @@ test("converts mixer decibels to linear audio gain", () => {
   assert.equal(decibelsToGain(0), 1);
   assert.ok(Math.abs(decibelsToGain(6) - 1.9953) < 0.0001);
   assert.ok(Math.abs(decibelsToGain(-6) - 0.5012) < 0.0001);
-  assert.equal(SCORE_MASTER_GAIN, 0.24);
+  assert.equal(SCORE_MASTER_GAIN, 0.32);
 });
 
 test("score playback loops by default at the end", () => {

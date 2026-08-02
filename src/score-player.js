@@ -2,7 +2,7 @@ import { midiToFrequency } from "./music.js";
 
 const SCHEDULE_INTERVAL_MS = 80;
 const LOOK_AHEAD_SECONDS = 0.45;
-export const SCORE_MASTER_GAIN = 0.24;
+export const SCORE_MASTER_GAIN = 0.32;
 export const MAX_PART_DECIBELS = 15;
 
 function clamp(value, minimum, maximum) {
