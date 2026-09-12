@@ -49,13 +49,6 @@ function metaTitle(xml, name) {
 }
 
 export function titleFromMuseScoreXml(xml, fallbackName = "Untitled") {
-  for (const name of ["workTitle", "movementTitle"]) {
-    const value = metaTitle(xml, name);
-    if (value && !GENERIC_TITLES.has(value.toLowerCase())) {
-      return value;
-    }
-  }
-
   for (const match of String(xml).matchAll(/<Text\b[^>]*>([\s\S]*?)<\/Text>/g)) {
     const block = match[1];
     if (!/<style>\s*title\s*<\/style>/i.test(block)) {
@@ -64,6 +57,13 @@ export function titleFromMuseScoreXml(xml, fallbackName = "Untitled") {
     const text = plainText(block.match(/<text\b[^>]*>([\s\S]*?)<\/text>/i)?.[1]);
     if (text) {
       return text;
+    }
+  }
+
+  for (const name of ["workTitle", "movementTitle"]) {
+    const value = metaTitle(xml, name);
+    if (value && !GENERIC_TITLES.has(value.toLowerCase())) {
+      return value;
     }
   }
 

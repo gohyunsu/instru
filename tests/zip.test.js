@@ -2,7 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { deflateRawSync } from "node:zlib";
 
-import { extractMuseScoreXml, listZipEntries } from "../src/zip.js";
+import {
+  extractMuseScoreXml,
+  listZipEntries,
+  selectMuseScoreEntry,
+} from "../src/zip.js";
 
 function writeUint16(buffer, offset, value) {
   buffer.writeUInt16LE(value, offset);
@@ -69,4 +73,14 @@ test("extracts a stored MSCX document", async () => {
 test("extracts a deflate-compressed MSCX document", async () => {
   const archive = makeZip("Scores/main.mscx", sample, true);
   assert.equal(await extractMuseScoreXml(archive), sample);
+});
+
+test("prefers a full score over shorter excerpt files", () => {
+  const selected = selectMuseScoreEntry([
+    { name: "Excerpts/0_Soprano/0_Soprano.mscx" },
+    { name: "Dream_6part.mscx" },
+    { name: "Excerpts/1_Alto/1_Alto.mscx" },
+  ]);
+
+  assert.equal(selected.name, "Dream_6part.mscx");
 });

@@ -253,6 +253,14 @@ function scoreTitle(scoreElement, fallbackName) {
     "untitled",
   ]);
 
+  const titleText = [...scoreElement.getElementsByTagName("Text")].find(
+    (textElement) => childText(textElement, "style") === "title",
+  );
+  const visibleTitle = titleText ? childText(titleText, "text") : "";
+  if (visibleTitle) {
+    return visibleTitle.replace(/\s+/g, " ").trim();
+  }
+
   for (const name of titleNames) {
     const meta = [...scoreElement.getElementsByTagName("metaTag")].find(
       (candidate) => candidate.getAttribute("name") === name,
@@ -261,14 +269,6 @@ function scoreTitle(scoreElement, fallbackName) {
     if (value && !genericTitles.has(value.toLowerCase())) {
       return value;
     }
-  }
-
-  const titleText = [...scoreElement.getElementsByTagName("Text")].find(
-    (textElement) => childText(textElement, "style") === "title",
-  );
-  const visibleTitle = titleText ? childText(titleText, "text") : "";
-  if (visibleTitle) {
-    return visibleTitle.replace(/\s+/g, " ").trim();
   }
 
   return fallbackName.replace(/\.(mscz|mscx)$/i, "") || "Untitled";

@@ -19,6 +19,16 @@ test("uses a visible title when metadata is generic", () => {
   assert.equal(titleFromMuseScoreXml(xml, "file.mscz"), "And July");
 });
 
+test("uses the visible score title when metadata is stale", () => {
+  const xml = `
+    <Score>
+      <metaTag name="workTitle">An earlier song</metaTag>
+      <Text><style>title</style><text>Dream</text></Text>
+    </Score>
+  `;
+  assert.equal(titleFromMuseScoreXml(xml, "file.mscz"), "Dream");
+});
+
 test("falls back to the file name when no title is stored", () => {
   assert.equal(titleFromMuseScoreXml("<Score />", "candy.mscz"), "candy");
 });

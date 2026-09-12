@@ -134,11 +134,19 @@ export async function extractZipEntry(input, entry) {
   return result;
 }
 
+export function selectMuseScoreEntry(entries) {
+  const scoreEntries = entries.filter((entry) => /\.mscx$/i.test(entry.name));
+  const topLevelScores = scoreEntries.filter((entry) => !entry.name.includes("/"));
+  const candidates = topLevelScores.length ? topLevelScores : scoreEntries;
+
+  return [...candidates].sort(
+    (left, right) => left.name.length - right.name.length,
+  )[0];
+}
+
 export async function extractMuseScoreXml(input) {
   const entries = listZipEntries(input);
-  const scoreEntry = entries
-    .filter((entry) => /\.mscx$/i.test(entry.name))
-    .sort((left, right) => left.name.length - right.name.length)[0];
+  const scoreEntry = selectMuseScoreEntry(entries);
 
   if (!scoreEntry) {
     throw new Error("MSCX_NOT_FOUND");
