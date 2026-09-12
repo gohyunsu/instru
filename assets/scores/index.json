@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-01T20:29:35.909Z",
+  "generatedAt": "2026-09-12T02:19:55.531Z",
   "scores": [
     {
       "name": "봄날",
@@ -9,11 +9,25 @@
       "size": 124177
     },
     {
+      "name": "신호등",
+      "fileName": "신호등.mscz",
+      "path": "assets/scores/신호등.mscz",
+      "format": "mscz",
+      "size": 75015
+    },
+    {
       "name": "아틀란티스 소녀",
       "fileName": "atlantis-princess.mscz",
       "path": "assets/scores/atlantis-princess.mscz",
       "format": "mscz",
       "size": 206244
+    },
+    {
+      "name": "A Sky Full of Stars",
+      "fileName": "a-sky-full-of-stars.mscz",
+      "path": "assets/scores/a-sky-full-of-stars.mscz",
+      "format": "mscz",
+      "size": 32259
     },
     {
       "name": "And July",
@@ -37,6 +51,13 @@
       "size": 194946
     },
     {
+      "name": "Dream",
+      "fileName": "dream.mscz",
+      "path": "assets/scores/dream.mscz",
+      "format": "mscz",
+      "size": 466129
+    },
+    {
       "name": "DUMDi DUMDi",
       "fileName": "dumdi.mscz",
       "path": "assets/scores/dumdi.mscz",
@@ -49,6 +70,20 @@
       "path": "assets/scores/heal-the-world.mscz",
       "format": "mscz",
       "size": 277996
+    },
+    {
+      "name": "Love Youself",
+      "fileName": "love-yourself.mscz",
+      "path": "assets/scores/love-yourself.mscz",
+      "format": "mscz",
+      "size": 35651
+    },
+    {
+      "name": "payphone",
+      "fileName": "payphone.mscz",
+      "path": "assets/scores/payphone.mscz",
+      "format": "mscz",
+      "size": 35929
     },
     {
       "name": "The girl from Ipanema",

@@ -5,9 +5,20 @@ import {
   buildTempoMap,
   fractionToTicks,
   isPercussionPartName,
+  measureVoiceContainers,
   preferredTenorPart,
   tickToSeconds,
 } from "../src/musescore-parser.js";
+
+test("reads MuseScore 2 measures without voice wrappers", () => {
+  const chord = { nodeType: 1, tagName: "Chord" };
+  const legacyMeasure = { childNodes: [chord] };
+  const voice = { nodeType: 1, tagName: "voice" };
+  const modernMeasure = { childNodes: [voice] };
+
+  assert.deepEqual(measureVoiceContainers(legacyMeasure), [legacyMeasure]);
+  assert.deepEqual(measureVoiceContainers(modernMeasure), [voice]);
+});
 
 test("converts whole-note fractions to MuseScore ticks", () => {
   assert.equal(fractionToTicks("1/4", 480), 480);

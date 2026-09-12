@@ -35,6 +35,11 @@ function directChild(element, tagName) {
   );
 }
 
+export function measureVoiceContainers(measure) {
+  const voices = directChildren(measure, "voice");
+  return voices.length ? voices : [measure];
+}
+
 function childText(element, tagName) {
   if (!element) {
     return "";
@@ -333,7 +338,13 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
         explicitMeasureLength ??
         (timeNumerator * division * 4) / timeDenominator;
       let furthestCursor = measureStart;
-      const voices = directChildren(measure, "voice");
+      // MuseScore 2 stores Chord/Rest nodes directly below Measure, while
+      // newer files wrap them in one or more voice nodes.
+      const voices = measureVoiceContainers(measure);
+      const measureNumber =
+        measure.getAttribute("no") ||
+        measure.getAttribute("number") ||
+        measureIndex + 1;
 
       for (let voiceIndex = 0; voiceIndex < voices.length; voiceIndex += 1) {
         const voice = voices[voiceIndex];
@@ -408,8 +419,7 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
                 durationTicks,
                 partId: part.id,
                 measureIndex,
-                measureNumber:
-                  measure.getAttribute("no") || measureIndex + 1,
+                measureNumber,
                 verse:
                   Number(childText(lyric, "no")) ||
                   Number(lyric.getAttribute("no")) ||
@@ -471,7 +481,7 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
       measureStart = Math.max(measureStart + measureTicks, furthestCursor);
       if (staffIndex === 0) {
         measureMarkers.push({
-          number: measure.getAttribute("no") || measureIndex + 1,
+          number: measureNumber,
           startTick: currentMeasureStart,
           endTick: measureStart,
         });
