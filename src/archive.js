@@ -27,7 +27,7 @@ const events = [
     date: "05 Sep 2026",
     title: "Traditional team",
     note: "Danny Boy, Ipanema, and the moments after the curtain.",
-    images: ["traditional-stage-1", "traditional-stage-2"],
+    images: ["traditional-stage-2"],
   },
   {
     id: "popular",
