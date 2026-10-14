@@ -119,8 +119,8 @@ function openEvent(event, trigger) {
 for (const event of events) {
   const card = document.createElement("button");
   card.type = "button";
-  card.className = "gallery-card";
-  card.setAttribute("aria-label", `Open ${event.title}, ${event.images.length} illustrations`);
+  card.className = `gallery-card gallery-${event.id}`;
+  card.setAttribute("aria-label", `Open ${event.title}, ${event.images.length} ${event.images.length === 1 ? "illustration" : "illustrations"}`);
   const picture = document.createElement("img");
   picture.src = image(event.images[0]);
   picture.alt = "";

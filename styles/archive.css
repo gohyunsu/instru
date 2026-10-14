@@ -30,6 +30,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 86px; }
 body { background: var(--bg); font-family: var(--font); }
 button, input { font-family: inherit; }
 a { color: inherit; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 img { display: block; max-width: 100%; }
 .skip-link { position: fixed; z-index: 100; top: -80px; left: 16px; padding: 10px 15px; background: var(--ink); color: white; }
 .skip-link:focus { top: 12px; }
@@ -48,7 +49,7 @@ img { display: block; max-width: 100%; }
 .header-aside { justify-self: end; color: #8b9186; font-family: "Playfair Display", Georgia, serif; font-size: 13px; font-style: italic; }
 .hero { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: center; gap: clamp(35px, 5vw, 88px); min-height: 640px; padding-top: 60px; padding-bottom: 90px; }
 .hero-copy { position: relative; padding-bottom: 10px; }
-.eyebrow, .section-number, .group-label { color: #937b60; font-size: 10px; font-weight: 700; letter-spacing: .19em; }
+.eyebrow, .section-kicker, .group-label { color: #937b60; font-size: 10px; font-weight: 700; letter-spacing: .19em; }
 .eyebrow { display: flex; align-items: center; gap: 12px; margin: 0 0 27px; }
 .eyebrow-line { display: inline-block; width: 31px; height: 1px; background: #af9270; }
 .hero h1, .section-heading h2 { margin: 0; color: var(--ink); font-family: "Playfair Display", Georgia, serif; font-weight: 400; letter-spacing: -.055em; }
@@ -83,7 +84,8 @@ img { display: block; max-width: 100%; }
 .team-card { overflow: hidden; border: 1px solid var(--line); background: #fbf9f3; }
 .memory-carousel { position: relative; overflow: hidden; background: #e7dfd1; }
 .memory-carousel img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.team-visual { height: clamp(260px, 30vw, 380px); }
+.team-visual { height: auto; aspect-ratio: 4 / 3; }
+.team-visual img { object-fit: contain; }
 .carousel-arrow { position: absolute; top: 50%; display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: rgba(252, 250, 245, .91); color: var(--ink); cursor: pointer; font-size: 17px; transform: translateY(-50%); }
 .carousel-previous { left: 14px; } .carousel-next { right: 14px; }
 .carousel-counter { position: absolute; right: 14px; bottom: 14px; padding: 5px 8px; border-radius: 3px; background: rgba(39, 51, 46, .76); color: #fff; font-size: 10px; letter-spacing: .08em; }
@@ -101,7 +103,8 @@ img { display: block; max-width: 100%; }
 .gallery-heading p { margin-bottom: 5px; text-align: right; }
 .gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17px; }
 .gallery-card { position: relative; display: block; overflow: hidden; padding: 0; border: 0; background: #d8d0be; cursor: pointer; text-align: left; }
-.gallery-card img { width: 100%; aspect-ratio: 1; object-fit: cover; transition: transform .45s ease; }
+.gallery-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: transform .45s ease; }
+.gallery-afterparty img { object-position: center top; }
 .gallery-card:hover img { transform: scale(1.045); }
 .gallery-card::after { position: absolute; inset: 40% 0 0; background: linear-gradient(transparent, rgba(27, 32, 28, .74)); content: ""; }
 .gallery-card-label { position: absolute; z-index: 1; right: 21px; bottom: 20px; left: 21px; display: grid; gap: 6px; color: white; }
@@ -114,11 +117,11 @@ img { display: block; max-width: 100%; }
 .tool-topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .mode-switch { width: min(100%, 390px); }
 .mode-view { flex: none; }
-.score-view { grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); gap: 18px; }
+.score-view { grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .score-player-panel { grid-column: 1 / -1; }
 .score-message { grid-column: 1 / -1; }
 .score-library, .score-import, .score-player-panel, .pitch-graph { box-shadow: none; background: #faf9f3; }
-.library-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.library-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .library-item { min-height: 58px; }
 .score-library, .score-import { padding: 22px; }
 .score-import { align-content: center; }
@@ -162,9 +165,14 @@ img { display: block; max-width: 100%; }
   .site-header { grid-template-columns: auto 1fr; padding-inline: 24px; }
   .header-aside { display: none; }
   .site-nav { justify-content: end; gap: 18px; }
-  .hero { min-height: 0; padding-top: 65px; gap: 35px; }
-  .hero h1 { font-size: clamp(54px, 7.8vw, 76px); }
-  .about-section { gap: 7%; }
+  .hero { grid-template-columns: 1fr; min-height: 0; gap: 43px; padding-top: 65px; }
+  .hero-copy { max-width: 690px; }
+  .hero h1 { font-size: clamp(62px, 9vw, 80px); }
+  .hero-figure { width: min(calc(100% - 16px), 720px); margin-inline: auto; }
+  .about-section { grid-template-columns: 1fr; gap: 20px; }
+  .about-copy { max-width: 660px; padding-top: 0; }
+  .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .library-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 700px) {
   .section-wrap, .app-shell, .site-footer { width: min(100% - 36px, 560px); }
@@ -184,10 +192,11 @@ img { display: block; max-width: 100%; }
   .about-copy { padding-top: 0; }
   .section-heading h2 { font-size: clamp(39px, 9vw, 57px); }
   .team-grid { grid-template-columns: 1fr; gap: 20px; }
-  .team-visual { height: clamp(230px, 67vw, 375px); }
+  .team-visual { height: auto; }
   .gallery-heading, .practice-heading { align-items: start; flex-direction: column; gap: 0; }
   .gallery-heading p { text-align: left; }
   .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .gallery-card img { aspect-ratio: 1; }
   .gallery-card-label { right: 12px; bottom: 12px; left: 12px; }
   .gallery-card-label strong { font-size: 17px; }
   .practice-section { padding: 67px 0 70px; }
@@ -207,8 +216,8 @@ img { display: block; max-width: 100%; }
   .site-footer { flex-wrap: wrap; min-height: 125px; }
   .site-footer p { order: 3; width: 100%; }
   .dialog-inner { grid-template-columns: 1fr; }
-  .dialog-image-wrap { min-height: 280px; max-height: 64vh; }
-  .dialog-image-wrap img { max-height: 64vh; }
+  .dialog-image-wrap { min-height: 0; max-height: 64vh; }
+  .dialog-image-wrap img { height: auto; max-height: 64vh; }
   .dialog-caption { padding: 20px 23px 24px; }
   .dialog-caption h2 { margin: 8px 0; font-size: 26px; }
   .dialog-caption p { margin: 0; font-size: 12px; }
