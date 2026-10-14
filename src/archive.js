@@ -1,4 +1,4 @@
-const image = (name) => `./assets/illustrations/${name}.webp`;
+const image = (name) => `./assets/illustrations/${name}.webp?v=20261015`;
 
 const events = [
   {
