@@ -33,8 +33,8 @@ const events = [
     id: "popular",
     date: "05 Sep 2026",
     title: "Popular team 1",
-    note: "DUMDi DUMDi and And July, with a little extra energy.",
-    images: ["popular-stage"],
+    note: "One photo after my first show, one while we were still singing.",
+    images: ["popular-stage", "popular-performance"],
   },
   {
     id: "camp",

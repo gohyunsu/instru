@@ -5,7 +5,7 @@ A personal archive of Hyunsu Go's time singing tenor with Instru's 18th cohort a
 ## What is here
 
 - A brief introduction, the September 2026 concert by team, and a date-grouped gallery.
-- Eleven watercolor reinterpretations of private source photographs.
+- Twelve watercolor reinterpretations of private source photographs.
 - A live pitch checker and a browser-based MuseScore rehearsal player.
 
 The original photographs live in `assets/photos_raw/` **only on the local machine**. That path is Git-ignored. The site build copies only an explicit allowlist into `dist/`; it never copies source photos. Only `assets/illustrations/*.webp` is published.
