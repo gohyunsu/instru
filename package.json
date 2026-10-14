@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/app.js && node --check src/archive.js && node --check src/audio-engine.js && node --check src/music.js && node --check src/musescore-parser.js && node --check src/pitch-core.js && node --check src/pitch-graph.js && node --check src/pitch-processor.js && node --check src/pitch-stabilizer.js && node --check src/score-lyrics.js && node --check src/score-metadata.js && node --check src/score-notation.js && node --check src/score-player.js && node --check src/score-titles.js && node --check src/zip.js && node --check scripts/build-score-index.js && node --check scripts/build-site.js",
+    "check": "node --check src/app.js && node --check src/archive.js && node --check src/audio-engine.js && node --check src/music.js && node --check src/musescore-parser.js && node --check src/pitch-core.js && node --check src/pitch-graph.js && node --check src/pitch-processor.js && node --check src/pitch-stabilizer.js && node --check src/score-lyrics.js && node --check src/score-metadata.js && node --check src/score-notation.js && node --check src/score-player.js && node --check src/score-preferences.js && node --check src/score-titles.js && node --check src/zip.js && node --check scripts/build-score-index.js && node --check scripts/build-site.js",
     "scores:index": "node scripts/build-score-index.js",
     "build": "node scripts/build-site.js"
   }

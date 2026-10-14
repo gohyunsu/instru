@@ -6,7 +6,7 @@ const events = [
     date: "08 Oct 2026",
     title: "HJ's graduation day",
     note: "Congratulations on your university graduation, HJ! Here's to more songs together.",
-    images: ["graduation-1", "graduation-2"],
+    images: ["graduation-1"],
   },
   {
     id: "afterparty",
@@ -20,7 +20,7 @@ const events = [
     date: "05 Sep 2026",
     title: "Our 18th cohort",
     note: "My fellow voices, and an unusually cooperative camera.",
-    images: ["eighteenth-1", "eighteenth-2", "eighteenth-3"],
+    images: ["eighteenth-1", "eighteenth-2"],
   },
   {
     id: "traditional",

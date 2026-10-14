@@ -9,10 +9,7 @@ import {
   midiToFrequency,
   midiToNote,
 } from "./music.js";
-import {
-  preferredTenorPart,
-  readMuseScoreFile,
-} from "./musescore-parser.js";
+import { readMuseScoreFile } from "./musescore-parser.js";
 import { VerticalPitchGraph } from "./pitch-graph.js";
 import { PitchStabilizer } from "./pitch-stabilizer.js";
 import { measureIndexAtPosition } from "./score-lyrics.js";
@@ -22,6 +19,7 @@ import {
   MuseScorePlayer,
 } from "./score-player.js";
 import { scoreDisplayTitle } from "./score-titles.js";
+import { preferredNotationPart } from "./score-preferences.js";
 
 const PART_VOLUME_MIN_DB = -15;
 const PART_VOLUME_MAX_DB = 10;
@@ -669,9 +667,29 @@ function setPartEnabled(button, part, input, output, enabled) {
   updatePartMixerControl(button, input, output);
 }
 
+function setPartVolumeDecibels(partId, decibels) {
+  const button = [...elements.partList.querySelectorAll(".part-toggle")]
+    .find((candidate) => candidate.dataset.partId === partId);
+  const row = button?.closest(".part-row");
+  const input = row?.querySelector(".part-volume");
+  const output = row?.querySelector(".part-volume-value");
+  if (!button || !input || !output) return;
+  input.value = String(decibels);
+  scorePlayer.setPartVolume(partId, decibelsToGain(decibels));
+  updatePartMixerControl(button, input, output);
+}
+
 function setScorePart(partId, { vibrate = true } = {}) {
+  const previousPartId = state.selectedPartId;
   const nextPartId = state.selectedPartId === partId ? null : partId;
   state.selectedPartId = nextPartId;
+
+  if (previousPartId && previousPartId !== nextPartId) {
+    setPartVolumeDecibels(previousPartId, 0);
+  }
+  if (nextPartId && nextPartId !== previousPartId) {
+    setPartVolumeDecibels(nextPartId, PART_VOLUME_MAX_DB);
+  }
 
   for (const button of elements.partList.querySelectorAll(".part-toggle")) {
     const selected = button.dataset.partId === nextPartId;
@@ -816,9 +834,9 @@ function renderScore(score) {
   elements.liveScorePanel.hidden = true;
   elements.playbackVisualizer.hidden = false;
   scoreNotation.setScore(score);
-  const tenorPart = preferredTenorPart(score.parts);
-  if (tenorPart) {
-    setScorePart(tenorPart.id, { vibrate: false });
+  const initialPart = preferredNotationPart(score);
+  if (initialPart) {
+    setScorePart(initialPart.id, { vibrate: false });
   }
   setScoreMessage("");
   if (state.mode === "score") {
@@ -904,7 +922,9 @@ function renderLibrary(scores) {
       setStatus("Downloading", "paused");
       setScoreMessage(`Loading ${score.name}…`);
       try {
-        const response = await fetch(new URL(score.path, document.baseURI));
+        const scoreUrl = new URL(score.path, document.baseURI);
+        scoreUrl.searchParams.set("v", String(score.size));
+        const response = await fetch(scoreUrl);
         if (!response.ok) {
           throw new Error("FETCH_FAILED");
         }
