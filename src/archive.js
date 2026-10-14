@@ -26,7 +26,7 @@ const events = [
     id: "traditional",
     date: "05 Sep 2026",
     title: "Traditional team",
-    note: "With the team before Danny Boy and Ipanema.",
+    note: "With the team before Danny Boy.",
     images: ["traditional-stage-2"],
   },
   {
