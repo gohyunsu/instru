@@ -4,8 +4,8 @@ const events = [
   {
     id: "graduation",
     date: "08 Oct 2026",
-    title: "A graduation, and one more chorus",
-    note: "The kind of goodbye that turns into another group photo.",
+    title: "HJ's graduation day",
+    note: "Congratulations on your university graduation, HJ! Here's to more songs together.",
     images: ["graduation-1", "graduation-2"],
   },
   {
