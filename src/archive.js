@@ -18,7 +18,7 @@ const events = [
   {
     id: "eighteenth",
     date: "05 Sep 2026",
-    title: "The 18th generation",
+    title: "Our 18th cohort",
     note: "My fellow voices, and an unusually cooperative camera.",
     images: ["eighteenth-1", "eighteenth-2", "eighteenth-3"],
   },

@@ -1,6 +1,6 @@
 # Instru, in the margins
 
-A personal archive of Hyunsu Go's time as an 18th generation tenor in Instru, Seoul National University's a cappella club. The public site is in English and is hosted with GitHub Pages.
+A personal archive of Hyunsu Go's time singing tenor with Instru's 18th cohort at Seoul National University. The public site is in English and is hosted with GitHub Pages.
 
 ## What is here
 
