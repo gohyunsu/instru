@@ -2,12 +2,14 @@ import {
   activeLyricId,
   lyricTokenText,
 } from "./score-lyrics.js";
+import { secondsToTick, tickToSeconds } from "./musescore-parser.js";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const STAFF_HEIGHT = 112;
 const STAFF_HEIGHT_WITH_LYRICS = 142;
 const STAFF_GAP = 8;
 const PIXELS_PER_SECOND = 76;
+const PIXELS_PER_QUARTER = 72;
 const EDGE_INSET = 48;
 const MEASURE_ENTRY_OFFSET = 12;
 
@@ -171,6 +173,20 @@ export function positionForScrollLeft(
   );
 }
 
+export function scoreOffsetForTime(score, time) {
+  if (!score?.tempoMap?.length) return scrollLeftForPosition(time);
+  return Math.max(0, secondsToTick(time, score.tempoMap, score.division)) /
+    score.division * PIXELS_PER_QUARTER;
+}
+
+export function scoreTimeForOffset(score, offset) {
+  if (!score?.tempoMap?.length) {
+    return positionForScrollLeft(offset, score?.duration ?? 0);
+  }
+  const tick = Math.max(0, offset) / PIXELS_PER_QUARTER * score.division;
+  return clamp(tickToSeconds(tick, score.tempoMap, score.division), 0, score.duration);
+}
+
 export function measureEntryOffset(
   item,
   measures,
@@ -181,7 +197,7 @@ export function measureEntryOffset(
     item?.startTick !== undefined && Number.isFinite(itemTick);
   const itemSeconds = Number(item?.startSeconds);
   const hasSeconds = Number.isFinite(itemSeconds);
-  const atMeasureStart = (measures ?? []).some((measure) => {
+  const measureAtStart = (measures ?? []).find((measure) => {
     const measureTick = Number(measure.startTick);
     if (
       hasTick &&
@@ -196,7 +212,17 @@ export function measureEntryOffset(
       Math.abs(itemSeconds - Number(measure.startSeconds)) < 0.0001
     );
   });
-  return atMeasureStart ? Math.max(0, Number(offset) || 0) : 0;
+  if (!measureAtStart) return 0;
+  return Math.max(0, Number(offset) || 0) +
+    (measureAtStart.timeSignature ? 25 : 0) +
+    (measureAtStart.keySignature !== null &&
+    measureAtStart.keySignature !== undefined ? 25 : 0);
+}
+
+export function keySignatureLabel(count) {
+  if (!Number.isFinite(count)) return "";
+  if (count === 0) return "♮";
+  return `${Math.abs(count)}${count > 0 ? "♯" : "♭"}`;
 }
 
 export function lyricsForPart(score, partId) {
@@ -401,10 +427,7 @@ export class LiveScoreNotation {
     }
 
     this.exploringUntil = performance.now() + 1400;
-    const position = positionForScrollLeft(
-      this.container.scrollLeft,
-      this.score.duration,
-    );
+    const position = this.timeForOffset(this.container.scrollLeft);
     this.position = position;
     this.updateActiveNotes();
     this.updateAriaLabel();
@@ -416,12 +439,26 @@ export class LiveScoreNotation {
   }
 
   xForTime(time) {
-    return this.viewportWidth / 2 + scrollLeftForPosition(time);
+    return this.viewportWidth / 2 + this.offsetForTime(time);
+  }
+
+  offsetForTime(time) {
+    return scoreOffsetForTime(this.score, time);
+  }
+
+  timeForOffset(offset) {
+    return scoreTimeForOffset(this.score, offset);
+  }
+
+  xForTick(tick) {
+    return this.viewportWidth / 2 + tick / this.score.division * PIXELS_PER_QUARTER;
   }
 
   xForTimedItem(item) {
     return (
-      this.xForTime(item.startSeconds) +
+      (Number.isFinite(item.startTick)
+        ? this.xForTick(item.startTick)
+        : this.xForTime(item.startSeconds)) +
       measureEntryOffset(item, this.score?.measures)
     );
   }
@@ -437,9 +474,9 @@ export class LiveScoreNotation {
 
   renderEvent(event, clef, group, staffBottom) {
     const startX = this.xForTimedItem(event);
-    const endX = this.xForTime(
-      event.startSeconds + event.durationSeconds,
-    );
+    const endX = Number.isFinite(event.startTick + event.durationTicks)
+      ? this.xForTick(event.startTick + event.durationTicks)
+      : this.xForTime(event.startSeconds + event.durationSeconds);
     const { step, y, spelling } = this.noteY(event, clef, staffBottom);
     const eventGroup = createSvgElement("g", {
       class: "notation-event",
@@ -548,13 +585,13 @@ export class LiveScoreNotation {
     );
     const totalWidth =
       this.viewportWidth +
-      scrollLeftForPosition(this.score.duration);
+      this.offsetForTime(this.score.duration);
     const staffTop = 41;
     const staffBottom = staffTop + STAFF_GAP * 4;
     const startX = this.viewportWidth / 2 - EDGE_INSET;
     const endX =
       this.viewportWidth / 2 +
-      scrollLeftForPosition(this.score.duration) +
+      this.offsetForTime(this.score.duration) +
       EDGE_INSET;
     const part = this.score.parts.find(
       (candidate) => candidate.id === this.partId,
@@ -614,7 +651,9 @@ export class LiveScoreNotation {
     }
 
     for (const measure of this.score.measures ?? []) {
-      const x = this.xForTime(measure.startSeconds);
+      const x = Number.isFinite(measure.startTick)
+        ? this.xForTick(measure.startTick)
+        : this.xForTime(measure.startSeconds);
       group.append(
         createSvgElement("line", {
           x1: x,
@@ -633,12 +672,41 @@ export class LiveScoreNotation {
           measure.number,
         ),
       );
+      if (measure.timeSignature) {
+        group.append(createSvgElement("text", {
+          x: x + 13, y: staffTop + 12, class: "notation-meter",
+        }, measure.timeSignature));
+      }
+      if (measure.keySignature !== null && measure.keySignature !== undefined) {
+        group.append(createSvgElement("text", {
+          x: x + 13, y: staffTop + 27, class: "notation-meter",
+        }, keySignatureLabel(measure.keySignature)));
+      }
     }
 
     this.eventNodes = [];
     this.activeNodes.clear();
-    for (const event of this.eventsByPart.get(this.partId) ?? []) {
+    const partEvents = this.eventsByPart.get(this.partId) ?? [];
+    for (const event of partEvents) {
       this.renderEvent(event, clef, group, staffBottom);
+    }
+    for (const [index, event] of partEvents.entries()) {
+      if (!event.slurToNext || !event.voiceKey) continue;
+      const next = partEvents.slice(index + 1).find(
+        (candidate) =>
+          candidate.voiceKey === event.voiceKey &&
+          candidate.startTick > event.startTick,
+      );
+      if (!next) continue;
+      const x1 = this.xForTimedItem(event);
+      const x2 = this.xForTimedItem(next);
+      if (x2 <= x1 + 8) continue;
+      const y1 = this.noteY(event, clef, staffBottom).y + 12;
+      const y2 = this.noteY(next, clef, staffBottom).y + 12;
+      group.append(createSvgElement("path", {
+        d: `M ${x1} ${y1} Q ${(x1 + x2) / 2} ${Math.max(y1, y2) + 13} ${x2} ${y2}`,
+        class: "notation-slur",
+      }));
     }
 
     this.lyricNodes.clear();
@@ -722,7 +790,7 @@ export class LiveScoreNotation {
   }
 
   scrollToPosition(position) {
-    const target = scrollLeftForPosition(position);
+    const target = this.offsetForTime(position);
     if (Math.abs(this.container.scrollLeft - target) < 0.5) {
       return;
     }

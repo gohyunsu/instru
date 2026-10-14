@@ -33,11 +33,12 @@ class FakeOscillator extends FakeAudioNode {
   constructor() {
     super();
     this.frequency = new FakeAudioParam();
+    this.stopCalls = 0;
   }
 
   start() {}
 
-  stop() {}
+  stop() { this.stopCalls += 1; }
 }
 
 class FakeGain extends FakeAudioNode {
@@ -53,6 +54,7 @@ class FakeAudioContext {
     this.currentTime = 2;
     this.destination = {};
     this.gains = [];
+    this.oscillators = [];
     this.resumeCount = 0;
     this.suspendCount = 0;
   }
@@ -68,7 +70,9 @@ class FakeAudioContext {
   }
 
   createOscillator() {
-    return new FakeOscillator();
+    const oscillator = new FakeOscillator();
+    this.oscillators.push(oscillator);
+    return oscillator;
   }
 
   createGain() {
@@ -105,4 +109,14 @@ test("reference tone resumes reliably after its context was suspended", async ()
   assert.equal(context.state, "running");
   assert.ok(context.resumeCount >= 3);
   assert.equal(states.at(-1), true);
+});
+
+test("reference tone sustains until the hold is released", async () => {
+  const player = new ReferenceTonePlayer();
+  await player.play(440, null);
+  const oscillator = player.context.oscillators.at(-1);
+  assert.equal(oscillator.stopCalls, 0);
+  assert.equal(player.stopTimer, null);
+  player.stop();
+  assert.equal(oscillator.stopCalls, 1);
 });

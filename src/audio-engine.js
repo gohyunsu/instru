@@ -149,7 +149,8 @@ export class ReferenceTonePlayer {
     this.stop(false);
 
     const now = this.context.currentTime;
-    const releaseAt = now + duration;
+    const sustained = duration === null;
+    const releaseAt = sustained ? null : now + duration;
     const oscillator = this.context.createOscillator();
     const gain = this.context.createGain();
 
@@ -157,17 +158,21 @@ export class ReferenceTonePlayer {
     oscillator.frequency.setValueAtTime(frequency, now);
     gain.gain.setValueAtTime(0.0001, now);
     gain.gain.exponentialRampToValueAtTime(0.18, now + 0.025);
-    gain.gain.setValueAtTime(0.18, Math.max(now + 0.03, releaseAt - 0.08));
-    gain.gain.exponentialRampToValueAtTime(0.0001, releaseAt);
+    if (!sustained) {
+      gain.gain.setValueAtTime(0.18, Math.max(now + 0.03, releaseAt - 0.08));
+      gain.gain.exponentialRampToValueAtTime(0.0001, releaseAt);
+    }
 
     oscillator.connect(gain).connect(this.context.destination);
     oscillator.start(now);
-    oscillator.stop(releaseAt + 0.025);
+    if (!sustained) oscillator.stop(releaseAt + 0.025);
 
     this.oscillator = oscillator;
     this.gain = gain;
     this.onStateChange(true);
-    this.stopTimer = window.setTimeout(() => this.stop(), (duration + 0.04) * 1000);
+    if (!sustained) {
+      this.stopTimer = window.setTimeout(() => this.stop(), (duration + 0.04) * 1000);
+    }
   }
 
   stop(announce = true) {

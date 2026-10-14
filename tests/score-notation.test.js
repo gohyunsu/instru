@@ -3,10 +3,13 @@ import assert from "node:assert/strict";
 
 import {
   clefForEvents,
+  keySignatureLabel,
   lyricsForPart,
   measureEntryOffset,
   noteSpelling,
   positionForScrollLeft,
+  scoreOffsetForTime,
+  scoreTimeForOffset,
   scrollLeftForPosition,
   staffStepForNote,
   visibleEvents,
@@ -70,6 +73,32 @@ test("maps horizontal score exploration to playback time", () => {
   assert.equal(scrollLeftForPosition(12.5), 950);
   assert.equal(positionForScrollLeft(950, 20), 12.5);
   assert.equal(positionForScrollLeft(5000, 20), 20);
+});
+
+test("keeps quarter-note spacing stable when tempo changes", () => {
+  const score = {
+    division: 480,
+    duration: 3,
+    tempoMap: [
+      { tick: 0, bpm: 120, seconds: 0 },
+      { tick: 960, bpm: 60, seconds: 1 },
+    ],
+  };
+  assert.equal(scoreOffsetForTime(score, 0.5), 72);
+  assert.equal(scoreOffsetForTime(score, 2), 216);
+  assert.equal(scoreTimeForOffset(score, 216), 2);
+  assert.equal(keySignatureLabel(3), "3♯");
+  assert.equal(keySignatureLabel(-2), "2♭");
+});
+
+test("reserves room after meter and key changes", () => {
+  assert.equal(
+    measureEntryOffset(
+      { startTick: 480 },
+      [{ startTick: 480, timeSignature: "3/4", keySignature: -1 }],
+    ),
+    62,
+  );
 });
 
 test("adds entry space to notes and lyrics exactly on a measure boundary", () => {

@@ -3,7 +3,7 @@ import { midiToFrequency } from "./music.js";
 const SCHEDULE_INTERVAL_MS = 80;
 const LOOK_AHEAD_SECONDS = 0.45;
 export const SCORE_MASTER_GAIN = 0.32;
-export const MAX_PART_DECIBELS = 15;
+export const MAX_PART_DECIBELS = 10;
 
 function clamp(value, minimum, maximum) {
   return Math.max(minimum, Math.min(maximum, value));
@@ -25,6 +25,7 @@ export class MuseScorePlayer {
     this.compressor = null;
     this.analyser = null;
     this.frequencyData = null;
+    this.voiceWave = null;
     this.score = null;
     this.enabledParts = new Set();
     this.partVolumes = new Map();
@@ -78,6 +79,12 @@ export class MuseScorePlayer {
       this.frequencyData = new Uint8Array(
         this.analyser.frequencyBinCount,
       );
+      this.voiceWave = this.context.createPeriodicWave
+        ? this.context.createPeriodicWave(
+            new Float32Array(6),
+            new Float32Array([0, 1, 0.36, 0.18, 0.08, 0.035]),
+          )
+        : null;
       this.master
         .connect(this.compressor)
         .connect(this.analyser)
@@ -146,21 +153,28 @@ export class MuseScorePlayer {
     const delay = Math.max(0, event.startSeconds - position);
     const startAt = contextNow + delay;
     const audibleDuration = eventEnd - Math.max(position, event.startSeconds);
-    const endAt = startAt + Math.max(0.035, audibleDuration);
+    const endAt = startAt + Math.max(0.035, audibleDuration) +
+      (event.slurToNext ? 0.025 : 0);
     const oscillator = this.context.createOscillator();
     const gain = this.context.createGain();
     const node = { oscillator, gain, partId: event.partId };
 
-    oscillator.type = "sine";
+    // A small harmonic spectrum reads more like a sung vowel than a bare sine.
+    // Fall back to triangle on browsers without PeriodicWave support.
+    if (this.voiceWave && oscillator.setPeriodicWave) {
+      oscillator.setPeriodicWave(this.voiceWave);
+    } else {
+      oscillator.type = "triangle";
+    }
     oscillator.frequency.setValueAtTime(midiToFrequency(event.midi), startAt);
 
     const peak = 0.52 * event.velocity;
     const attackEnd = Math.min(startAt + 0.015, endAt - 0.012);
-    const releaseStart = Math.max(attackEnd, endAt - 0.07);
+    const releaseStart = Math.max(attackEnd, endAt - (event.slurToNext ? 0.025 : 0.07));
     gain.gain.setValueAtTime(0.0001, startAt);
     gain.gain.exponentialRampToValueAtTime(Math.max(0.02, peak), attackEnd);
     gain.gain.exponentialRampToValueAtTime(
-      Math.max(0.015, peak * 0.58),
+      Math.max(0.015, peak * (event.slurToNext ? 0.86 : 0.58)),
       releaseStart,
     );
     gain.gain.exponentialRampToValueAtTime(0.0001, endAt);

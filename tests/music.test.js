@@ -42,7 +42,8 @@ test("cent descriptions are explicit", () => {
     label: "In tune",
     symbol: "",
   });
-  assert.equal(describeCents(-14).label, "Slightly flat");
+  assert.equal(describeCents(-14).label, "In tune");
+  assert.equal(describeCents(-16).label, "Slightly flat");
   assert.equal(describeCents(28).label, "Sharp");
   assert.equal(formatCents(-14.4), "−14¢");
   assert.equal(formatCents(9.6), "+10¢");

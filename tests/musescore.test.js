@@ -7,6 +7,8 @@ import {
   isPercussionPartName,
   measureVoiceContainers,
   preferredTenorPart,
+  secondsToTick,
+  slurMarkers,
   tickToSeconds,
 } from "../src/musescore-parser.js";
 
@@ -51,6 +53,30 @@ test("last tempo at a shared tick wins", () => {
   );
   assert.equal(tempoMap.length, 1);
   assert.equal(tempoMap[0].bpm, 60);
+});
+
+test("converts time back to ticks across a tempo change", () => {
+  const tempoMap = buildTempoMap(
+    [{ tick: 0, bpm: 120 }, { tick: 960, bpm: 60 }],
+    480,
+  );
+  assert.equal(secondsToTick(0.5, tempoMap, 480), 480);
+  assert.equal(secondsToTick(2, tempoMap, 480), 1440);
+});
+
+test("distinguishes MuseScore chord slur endpoints from note ties", () => {
+  const element = (tagName, children = [], type = null) => ({
+    nodeType: 1,
+    tagName,
+    childNodes: children,
+    getAttribute: (name) => (name === "type" ? type : null),
+  });
+  const start = element("Chord", [element("Spanner", [element("Slur")], "Slur")]);
+  const end = element("Chord", [element("Spanner", [element("prev")], "Slur")]);
+  const tie = element("Chord", [element("Note", [element("Spanner", [element("Tie")], "Tie")])]);
+  assert.deepEqual(slurMarkers(start), { start: true, end: false });
+  assert.deepEqual(slurMarkers(end), { start: false, end: true });
+  assert.deepEqual(slurMarkers(tie), { start: false, end: false });
 });
 
 test("recognizes percussion parts that should not be played", () => {

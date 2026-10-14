@@ -22,11 +22,26 @@ import {
   MuseScorePlayer,
 } from "./score-player.js";
 
-const PART_VOLUME_MIN_DB = -42;
-const PART_VOLUME_MAX_DB = 15;
+const PART_VOLUME_MIN_DB = -15;
+const PART_VOLUME_MAX_DB = 10;
+const SCORE_TITLE_OVERRIDES = new Map([
+  ["봄날", "Spring Day"],
+  ["신호등", "Traffic Light"],
+  ["아틀란티스 소녀", "Atlantis Princess"],
+  ["love youself", "Love Yourself"],
+  ["payphone", "Payphone"],
+  ["the girl from ipanema", "The Girl From Ipanema"],
+]);
+const FEATURED_SCORES = [
+  "Danny Boy", "The Girl From Ipanema", "DUMDi DUMDi",
+  "And July", "Heal the World",
+];
+
+function displayScoreTitle(title) {
+  return SCORE_TITLE_OVERRIDES.get(String(title).toLocaleLowerCase()) ?? title;
+}
 
 const elements = {
-  themeToggle: document.querySelector("#themeToggle"),
   listeningStatus: document.querySelector("#listeningStatus"),
   statusLabel: document.querySelector("#statusLabel"),
   modeButtons: [...document.querySelectorAll(".mode-button")],
@@ -40,6 +55,7 @@ const elements = {
   deviationLine: document.querySelector("#deviationLine"),
   deviationValue: document.querySelector("#deviationValue"),
   deviationCopy: document.querySelector("#deviationCopy"),
+  meterNeedle: document.querySelector("#meterNeedle"),
   pitchMessage: document.querySelector("#pitchMessage"),
   screenReaderStatus: document.querySelector("#screenReaderStatus"),
   canvas: document.querySelector("#pitchCanvas"),
@@ -74,7 +90,7 @@ const elements = {
 
 const graph = new VerticalPitchGraph(elements.canvas);
 const state = {
-  mode: "tuner",
+  mode: "score",
   listening: false,
   starting: false,
   playingTone: false,
@@ -273,6 +289,7 @@ function resetPitchSummary(message = "Hold a steady note") {
       : "Microphone needed";
   elements.deviationCopy.textContent = "";
   elements.deviationLine.dataset.direction = "";
+  elements.meterNeedle.style.left = "50%";
   elements.pitchMessage.textContent = message;
 }
 
@@ -304,6 +321,7 @@ function showMeasurement(measurement, confidence) {
         ? "Sharp"
         : "Flat";
   elements.deviationLine.dataset.direction = description.direction;
+  elements.meterNeedle.style.left = `${Math.max(0, Math.min(100, 50 + measurement.cents))}%`;
   elements.pitchMessage.textContent = "";
   elements.graphEmpty.classList.add("is-hidden");
   updateReferenceButtons(measurement.midi);
@@ -403,26 +421,26 @@ function handleToneState(playing) {
   }
 }
 
-async function handleReferenceClick(event) {
-  const button = event.currentTarget;
+async function startReferenceTone(button) {
   const midi = Number(button.dataset.midi);
-
-  if (button === state.activeToneButton && state.playingTone) {
-    tonePlayer.stop();
-    return;
-  }
-
   state.activeToneButton?.classList.remove("is-playing");
   state.activeToneButton = button;
   button.classList.add("is-playing");
-
   try {
-    await tonePlayer.play(midiToFrequency(midi));
+    await tonePlayer.play(midiToFrequency(midi), null);
+    if (state.activeToneButton !== button) tonePlayer.stop();
   } catch {
     button.classList.remove("is-playing");
     state.activeToneButton = null;
     setHelper("Reference tones are not supported in this browser.", true);
   }
+}
+
+function stopReferenceTone(button) {
+  if (state.activeToneButton !== button) return;
+  state.activeToneButton = null;
+  button.classList.remove("is-playing");
+  tonePlayer.stop();
 }
 
 function microphoneErrorMessage(error) {
@@ -630,9 +648,6 @@ function scoreErrorMessage(error) {
 }
 
 function partVolumeLabel(decibels, enabled) {
-  if (decibels <= PART_VOLUME_MIN_DB) {
-    return "Off";
-  }
   if (!enabled) {
     return "Muted";
   }
@@ -655,10 +670,6 @@ function updatePartMixerControl(button, input, output) {
 }
 
 function setPartEnabled(button, part, input, output, enabled) {
-  if (enabled && Number(input.value) <= PART_VOLUME_MIN_DB) {
-    input.value = "0";
-    scorePlayer.setPartVolume(part.id, 1);
-  }
   button.classList.toggle("is-enabled", enabled);
   button.setAttribute("aria-pressed", String(enabled));
   scorePlayer.setPartEnabled(part.id, enabled);
@@ -749,16 +760,10 @@ function bindPartControl(button, part, input, output) {
 
   input.addEventListener("input", () => {
     const decibels = Number(input.value);
-    const off = decibels <= PART_VOLUME_MIN_DB;
     scorePlayer.setPartVolume(
       part.id,
-      off ? 0 : decibelsToGain(decibels),
+      decibelsToGain(decibels),
     );
-    if (off !== !button.classList.contains("is-enabled")) {
-      button.classList.toggle("is-enabled", !off);
-      button.setAttribute("aria-pressed", String(!off));
-      scorePlayer.setPartEnabled(part.id, !off);
-    }
     updatePartMixerControl(button, input, output);
   });
 }
@@ -768,7 +773,7 @@ function renderScore(score) {
   state.selectedPartId = null;
   configureMeasureNavigation(score);
   scorePlayer.load(score);
-  elements.scoreTitle.textContent = score.title;
+  elements.scoreTitle.textContent = displayScoreTitle(score.title);
   elements.scoreMeta.textContent = formatTime(score.duration);
   elements.scoreProgress.max = String(score.duration);
   elements.scoreProgress.value = "0";
@@ -869,14 +874,24 @@ function renderLibrary(scores) {
     return;
   }
 
-  for (const score of scores) {
+  const orderedScores = [...scores].sort((left, right) => {
+    const leftRank = FEATURED_SCORES.findIndex(
+      (title) => title.toLocaleLowerCase() === displayScoreTitle(left.name).toLocaleLowerCase(),
+    );
+    const rightRank = FEATURED_SCORES.findIndex(
+      (title) => title.toLocaleLowerCase() === displayScoreTitle(right.name).toLocaleLowerCase(),
+    );
+    return (leftRank < 0 ? 999 : leftRank) -
+      (rightRank < 0 ? 999 : rightRank);
+  });
+  for (const score of orderedScores) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "library-item";
     const copy = document.createElement("div");
     const title = document.createElement("strong");
     const detail = document.createElement("small");
-    title.textContent = score.name;
+    title.textContent = displayScoreTitle(score.name);
     detail.textContent = `${String(score.format).toUpperCase()} · ${formatFileSize(score.size)}`;
     copy.append(title, detail);
     button.append(copy);
@@ -972,31 +987,6 @@ function handleScoreProgress(position, duration) {
   updateMeasureNavigation(position);
 }
 
-function applyTheme(theme) {
-  document.documentElement.dataset.theme = theme;
-  localStorage.setItem("instru-theme", theme);
-  elements.themeToggle.setAttribute(
-    "aria-label",
-    theme === "dark" ? "Use light theme" : "Use dark theme",
-  );
-  document
-    .querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", theme === "dark" ? "#101512" : "#f3f1eb");
-  graph.refreshTheme();
-  scoreNotation.refreshTheme();
-}
-
-function initializeTheme() {
-  const stored = localStorage.getItem("instru-theme");
-  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  applyTheme(stored || (prefersDark ? "dark" : "light"));
-}
-
-elements.themeToggle.addEventListener("click", () => {
-  const current = document.documentElement.dataset.theme;
-  applyTheme(current === "dark" ? "light" : "dark");
-});
-
 elements.modeButtons.forEach((button) =>
   button.addEventListener("click", () => setMode(button.dataset.mode)),
 );
@@ -1010,9 +1000,30 @@ elements.listeningStatus.addEventListener("click", () => {
   }
 });
 
-elements.referenceButtons.forEach((button) =>
-  button.addEventListener("click", handleReferenceClick),
-);
+elements.referenceButtons.forEach((button) => {
+  button.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.preventDefault();
+    button.setPointerCapture?.(event.pointerId);
+    startReferenceTone(button);
+  });
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    button.addEventListener(type, () => stopReferenceTone(button));
+  }
+  button.addEventListener("keydown", (event) => {
+    if ((event.key === " " || event.key === "Enter") && !event.repeat) {
+      event.preventDefault();
+      startReferenceTone(button);
+    }
+  });
+  button.addEventListener("keyup", (event) => {
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      stopReferenceTone(button);
+    }
+  });
+  button.addEventListener("blur", () => stopReferenceTone(button));
+});
 
 elements.selectScoreButton.addEventListener("click", () =>
   elements.scoreFileInput.click(),
@@ -1108,8 +1119,6 @@ window.addEventListener("pageshow", () => {
   recoverAudio();
 });
 
-initializeTheme();
 updateReferenceButtons();
 resetPitchSummary();
 loadScoreLibrary();
-startListening();

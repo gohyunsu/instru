@@ -1,3 +1,6 @@
 node_modules/
+assets/photos_raw/
+.scratch/
+dist/
 .DS_Store
 npm-debug.log*

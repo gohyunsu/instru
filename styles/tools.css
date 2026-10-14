@@ -27,31 +27,6 @@
     sans-serif;
 }
 
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #101512;
-  --surface: #171d1a;
-  --surface-strong: #1d2521;
-  --ink: #f0eee6;
-  --muted: #929c96;
-  --faint: #66706a;
-  --line: rgba(240, 238, 230, 0.08);
-  --line-strong: rgba(240, 238, 230, 0.17);
-  --accent: #80c4a3;
-  --accent-soft: rgba(128, 196, 163, 0.1);
-  --accent-line: rgba(128, 196, 163, 0.38);
-  --low: #88aee2;
-  --high: #df9275;
-  --button: #e9eee9;
-  --button-ink: #152019;
-  --celebrate: #9be0bd;
-  --notation-paper: #131a17;
-  --notation-ink: #e1e7e2;
-  --notation-line: rgba(225, 231, 226, 0.27);
-  --notation-faint: rgba(225, 231, 226, 0.12);
-  --shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
-}
-
 * {
   box-sizing: border-box;
 }
@@ -204,18 +179,6 @@ button:focus-visible {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.7;
-}
-
-.theme-icon-sun {
-  display: none;
-}
-
-:root[data-theme="dark"] .theme-icon-moon {
-  display: none;
-}
-
-:root[data-theme="dark"] .theme-icon-sun {
-  display: block;
 }
 
 .mode-switch {

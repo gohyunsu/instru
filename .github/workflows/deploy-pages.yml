@@ -36,9 +36,11 @@ jobs:
       - uses: actions/configure-pages@v5
       - name: Build score library index
         run: node scripts/build-score-index.js
+      - name: Build public site
+        run: node scripts/build-site.js
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: .
+          path: dist
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

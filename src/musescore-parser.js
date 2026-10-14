@@ -120,6 +120,15 @@ export function tickToSeconds(tick, tempoMap, division) {
   return tempo.seconds + ((tick - tempo.tick) * 60) / (tempo.bpm * division);
 }
 
+export function secondsToTick(seconds, tempoMap, division) {
+  let tempo = tempoMap[0];
+  for (let index = 1; index < tempoMap.length; index += 1) {
+    if (tempoMap[index].seconds > seconds) break;
+    tempo = tempoMap[index];
+  }
+  return tempo.tick + ((seconds - tempo.seconds) * tempo.bpm * division) / 60;
+}
+
 export function isPercussionPartName(name, instrumentId = "") {
   return /\b(percussion|drums?|drumset|drum kit)\b|타악|드럼/i.test(
     `${name} ${instrumentId}`,
@@ -244,6 +253,16 @@ function hasTiePrevious(note) {
   );
 }
 
+export function slurMarkers(chord) {
+  const slurs = directChildren(chord, "Spanner").filter(
+    (spanner) => spanner.getAttribute("type") === "Slur",
+  );
+  return {
+    start: slurs.some((spanner) => Boolean(directChild(spanner, "Slur"))),
+    end: slurs.some((spanner) => Boolean(directChild(spanner, "prev"))),
+  };
+}
+
 function scoreTitle(scoreElement, fallbackName) {
   const titleNames = ["workTitle", "movementTitle"];
   const genericTitles = new Set([
@@ -306,6 +325,7 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
   const measureMarkers = [];
   const lyrics = [];
   const activeTies = new Map();
+  const activeSlurs = new Map();
 
   for (let staffIndex = 0; staffIndex < staffElements.length; staffIndex += 1) {
     const staff = staffElements[staffIndex];
@@ -329,6 +349,10 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
         timeDenominator =
           Number(childText(timeSignature, "sigD")) || timeDenominator;
       }
+      const keySignature = measure.getElementsByTagName("KeySig")[0];
+      const keyCount = keySignature
+        ? Number(childText(keySignature, "concertKey") || childText(keySignature, "accidental"))
+        : null;
 
       const explicitMeasureLength = fractionToTicks(
         measure.getAttribute("len") ?? "",
@@ -403,6 +427,11 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
             durationToTicks(item, division, measureTicks) * tupletFactor;
 
           if (item.tagName === "Chord") {
+            const slur = slurMarkers(item);
+            const slurKey = `${staffId}:${voiceIndex}`;
+            const slurToNext =
+              slur.start || (activeSlurs.has(slurKey) && !slur.end);
+            if (slur.start) activeSlurs.set(slurKey, true);
             for (const [lyricIndex, lyric] of directChildren(
               item,
               "Lyrics",
@@ -459,7 +488,9 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
                     Math.min(1, (Number(childText(note, "velocity")) || 80) / 100),
                   ),
                   partId: part.id,
+                  voiceKey: slurKey,
                   tpc,
+                  slurToNext,
                 };
                 events.push(event);
                 if (tiedToNext) {
@@ -471,6 +502,9 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
                 throw new Error("TOO_MANY_NOTES");
               }
             }
+            if (slur.end && !slur.start) activeSlurs.delete(slurKey);
+          } else {
+            activeSlurs.delete(`${staffId}:${voiceIndex}`);
           }
 
           cursor += durationTicks;
@@ -484,6 +518,10 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
           number: measureNumber,
           startTick: currentMeasureStart,
           endTick: measureStart,
+          timeSignature: timeSignature
+            ? `${timeNumerator}/${timeDenominator}`
+            : null,
+          keySignature: Number.isFinite(keyCount) ? keyCount : null,
         });
       }
     }
@@ -554,6 +592,7 @@ export function parseMuseScoreXml(xml, fallbackName = "MuseScore") {
     title: scoreTitle(scoreElement, fallbackName),
     sourceName: fallbackName,
     division,
+    tempoMap,
     parts,
     events: playableEvents,
     measures,

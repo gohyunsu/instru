@@ -1,60 +1,46 @@
-# INSTRU
+# Instru, in the margins
 
-세로 모바일 화면을 위한 실시간 반음 음정 도구이자 MuseScore 악보 플레이어입니다.
+A personal archive of Hyunsu Go''s time as an 18th generation tenor in Instru, Seoul National University''s a cappella club. The public site is in English and is hosted with GitHub Pages.
 
-## 음정
+## What is here
 
-- 페이지 진입 시 자동으로 마이크 연결 및 실시간 분석
-- Score 모드에서는 마이크 스트림을 완전히 종료하고 Pitch 복귀 시에만 다시 연결
-- 가장 가까운 반음과 센트 편차 표시
-- 시간이 아래에서 위로 흐르는 8초 세로 그래프
-- 정확 구간을 유지하면 빛과 파동 효과 제공
-- 현재 음 주변의 정확한 반음 재생
-- 라이트·다크 테마
+- A brief introduction, the September 2026 concert by team, and a date-grouped gallery.
+- Eleven watercolor reinterpretations of private source photographs.
+- A live pitch checker and a browser-based MuseScore rehearsal player.
 
-## MuseScore 재생
+The original photographs live in `assets/photos_raw/` **only on the local machine**. That path is Git-ignored. The site build copies only an explicit allowlist into `dist/`; it never copies source photos. Only `assets/illustrations/*.webp` is published.
 
-- `.mscz`와 `.mscx` 파일을 브라우저에서 직접 열기
-- 저장소에 보관된 악보와 기기에서 선택한 악보 재생
-- 원하는 시간으로 이동한 뒤 재생
-- 성부별 켜기·끄기
-- 선택한 성부의 오선보와 현재 재생 위치를 실시간 표시
-- 악보를 열면 `Tenor` 또는 `테너` 성부를 기본 악보로 자동 선택
-- 성부를 길게 눌러 한 성부의 앞뒤 마디 가사 추적
-- 퍼커션 성부는 재생과 표시에서 제외
-- 음표, 화음, 쉼표, 점음표, 기본 템포와 다성부 지원
-
-반복기호, 고급 주법과 MuseSounds 전용 음색은 기본 Web Audio 음색으로 단순화됩니다.
-
-## 악보 보관 경로
-
-공개 배포해도 되는 MuseScore 파일을 다음 폴더에 저장합니다.
+## Structure
 
 ```text
-assets/scores/
+index.html                 Archive and practice room
+styles/archive.css         Responsive archive design
+styles/tools.css           Pitch and score tool styling
+src/archive.js             Gallery and photo carousels
+src/app.js                 Practice room interface
+src/musescore-parser.js    MuseScore timing, notation, ties and slurs
+src/score-notation.js      Beat-spaced score view
+src/score-player.js        Web Audio playback and part mixer
+assets/illustrations/      Public watercolor illustrations
+assets/scores/             Public MuseScore files
+scripts/build-site.js      Public-file allowlist
 ```
 
-`.mscz` 또는 `.mscx` 파일을 넣으면 GitHub Actions가 파일 내부의 악보 제목을 읽어 배포 목록을 자동 생성합니다. 로컬에서 목록을 갱신하려면:
+## Run locally
 
-```bash
-npm run scores:index
-```
+Use Node.js 22 or newer:
 
-## 로컬 실행
-
-ES 모듈과 AudioWorklet을 사용하므로 파일을 직접 열지 말고 로컬 HTTP 서버로 실행합니다.
-
-```bash
-python3 -m http.server 4173
-```
-
-그런 다음 `http://localhost:4173`을 엽니다.
-
-## 검사
-
-```bash
+```sh
 npm test
 npm run check
+npm run build
+python -m http.server 4173 --directory dist
 ```
 
-마이크와 선택한 악보 파일은 서버로 전송하거나 저장하지 않습니다.
+Open `http://localhost:4173/`. The pitch checker requires a secure context and microphone permission. It starts only when the Pitch check tab is opened. A held reference-note button sustains the tone until released.
+
+## Score playback
+
+The player reads `.mscz` and `.mscx` files in the browser. It supports notes, rests, chords, dots, tuplets, ties, simple slur phrasing, tempo changes, and measure-level time and key changes. The score view uses consistent beat spacing. Part gain runs from −15 to +10 dB, with a separate mute button. Audio goes to the normal browser output, so the device''s media volume still controls the final level.
+
+This is a rehearsal view rather than a complete MuseScore renderer or MuseSounds replacement. Complex articulations, repeats, and instrument samples may differ from MuseScore itself.

@@ -5,23 +5,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta
       name="description"
-      content="A mobile pitch monitor and MuseScore rehearsal player"
+      content="Hyunsu's memories singing tenor with Instru, Seoul National University's a cappella club."
     />
-    <meta name="theme-color" content="#f3f1eb" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#101512" media="(prefers-color-scheme: dark)" />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f5f1e9" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css" />
-    <title>INSTRU · Vocal Toolkit</title>
+    <link rel="stylesheet" href="./styles/tools.css" />
+    <link rel="stylesheet" href="./styles/archive.css" />
+    <title>Instru, in the margins · Hyunsu Go</title>
   </head>
   <body>
-    <main class="app-shell">
-      <header class="topbar">
-        <div class="brand">
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span>INSTRU</span>
+    <a class="skip-link" href="#main">Skip to memories</a>
+    <header class="site-header">
+      <a class="site-brand" href="#top" aria-label="Instru, back to top"><span class="brand-flower" aria-hidden="true">✳</span><span>instru<span class="brand-period">.</span></span></a>
+      <nav class="site-nav" aria-label="Main navigation">
+        <a href="#about">About</a><a href="#history">On stage</a><a href="#gallery">Gallery</a><a href="#practice">Practice room</a>
+      </nav>
+      <span class="header-aside">Hyunsu's field notes</span>
+    </header>
+    <main id="main" class="site-main">
+      <section class="hero section-wrap" id="top" aria-labelledby="heroTitle">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-line"></span> SNU A CAPPELLA · 18TH GENERATION</p>
+          <h1 id="heroTitle">A few notes<br /><em>worth keeping.</em></h1>
+          <p class="hero-intro">I'm Hyunsu, an 18th generation tenor in Instru. These are the songs, stages, and people I get to remember.</p>
+          <div class="hero-actions"><a class="primary-link" href="#history">Turn the page <span aria-hidden="true">↗</span></a><a class="quiet-link" href="#gallery">See the moments <span aria-hidden="true">↓</span></a></div>
+          <p class="hero-footnote">Mostly in tune. Always together.</p>
         </div>
+        <figure class="hero-figure">
+          <img src="./assets/illustrations/eighteenth-1.webp" alt="Watercolor illustration of Hyunsu with fellow Instru 18th generation members after the September concert" fetchpriority="high" />
+          <figcaption><span>01 / OUR PEOPLE</span><span>September 2026</span></figcaption>
+          <span class="hero-doodle" aria-hidden="true">♪</span>
+        </figure>
+      </section>
 
+      <section class="about-section section-wrap" id="about" aria-labelledby="aboutTitle">
+        <div class="section-heading"><span class="section-number">01 — ABOUT</span><h2 id="aboutTitle">Voices, no instruments.<br /><em>Plenty of people.</em></h2></div>
+        <div class="about-copy"><p>Instru (人's Tru) is Seoul National University's a cappella club. Its name brings together <em>person</em>, <em>instrument</em>, and <em>true</em>: honest songs made with the instrument we all carry.</p><p>We sing everything from pop to jazz, on our March and September stages and wherever else voices fit. I joined as a tenor in the 18th generation. I stayed for the harmony—and the company.</p><div class="social-links"><a href="https://www.instagram.com/instru_snu" target="_blank" rel="noopener noreferrer">Instagram ↗</a><a href="https://youtube.com/@instrulive" target="_blank" rel="noopener noreferrer">YouTube ↗</a></div></div>
+      </section>
+
+      <section class="history-section section-wrap" id="history" aria-labelledby="historyTitle">
+        <div class="section-heading"><span class="section-number">02 — ON STAGE</span><h2 id="historyTitle">One night, a few<br /><em>different harmonies.</em></h2><p>September 2026 · Instru regular concert</p></div>
+        <div class="performance-intro"><span class="performance-date">05 <small>SEP<br />2026</small></span><div><h3>The September concert</h3><p>Two teams, four songs, and one final song with everyone.</p></div></div>
+        <div class="team-grid">
+          <article class="team-card"><div class="team-visual" data-carousel="traditional-stage-1,traditional-stage-2" data-label="Traditional team after the concert"></div><div class="team-details"><span class="team-index">TEAM 01 / CLASSICS</span><h3>Traditional team</h3><ul class="song-list"><li><span>Danny Boy</span><a href="https://youtu.be/vUADkUQRlXE" target="_blank" rel="noopener noreferrer" aria-label="Watch Danny Boy on YouTube">Watch ↗</a></li><li><span>The Girl From Ipanema</span><span class="song-no-video">On the setlist</span></li></ul></div></article>
+          <article class="team-card"><div class="team-visual" data-carousel="popular-stage" data-label="Popular team 1 after the concert"></div><div class="team-details"><span class="team-index">TEAM 02 / POP</span><h3>Popular team 1</h3><ul class="song-list"><li><span>DUMDi DUMDi</span><a href="https://youtu.be/PM4rosE4Oo4" target="_blank" rel="noopener noreferrer" aria-label="Watch DUMDi DUMDi on YouTube">Watch ↗</a></li><li><span>And July</span><a href="https://youtu.be/6BEMpHIWqq8" target="_blank" rel="noopener noreferrer" aria-label="Watch And July on YouTube">Watch ↗</a></li></ul></div></article>
+        </div>
+        <article class="finale-card"><div class="finale-visual" data-carousel="eighteenth-1,eighteenth-2,eighteenth-3" data-label="Instru 18th generation friends"></div><div class="finale-copy"><span class="team-index">THE FINALE / ALL OF US</span><h3>One more, together.</h3><p>We closed with <em>Heal The World</em>. The best part of a cappella is that no one has to carry a song alone.</p><a class="watch-link" href="https://youtu.be/a0bLRCDQWio" target="_blank" rel="noopener noreferrer">Watch the finale ↗</a></div></article>
+      </section>
+
+      <section class="gallery-section section-wrap" id="gallery" aria-labelledby="galleryTitle"><div class="section-heading gallery-heading"><div><span class="section-number">03 — GALLERY</span><h2 id="galleryTitle">Little scenes,<br /><em>loud memories.</em></h2></div><p>Each tile opens a day.<br />Every image is a watercolor reimagining.</p></div><div class="gallery-grid" id="galleryGrid"></div></section>
+    </main>
+    <section class="practice-section" id="practice" aria-labelledby="practiceTitle"><div class="section-wrap"><div class="section-heading practice-heading"><div><span class="section-number">04 — PRACTICE ROOM</span><h2 id="practiceTitle">A place to find<br /><em>the right note.</em></h2></div><p>Two small tools I use between rehearsals.</p></div></div>
+    <div class="app-shell">
+      <div class="tool-topbar">
+        <nav class="mode-switch" aria-label="Practice tool">
+          <button class="mode-button" type="button" data-mode="tuner" aria-pressed="false">Pitch check</button>
+          <button class="mode-button is-active" type="button" data-mode="score" aria-pressed="true">Score player</button>
+        </nav>
         <div class="topbar-actions">
           <button
             class="listening-status"
@@ -30,30 +70,12 @@
             aria-label="Current status"
           >
             <span class="status-dot" aria-hidden="true"></span>
-            <span id="statusLabel">Connecting</span>
-          </button>
-          <button class="icon-button" id="themeToggle" type="button" aria-label="Use dark theme">
-            <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M20 15.4A8 8 0 0 1 8.6 4a8.1 8.1 0 1 0 11.4 11.4Z"></path>
-            </svg>
-            <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="3.6"></circle>
-              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
-            </svg>
+            <span id="statusLabel">Choose a score</span>
           </button>
         </div>
-      </header>
+      </div>
 
-      <nav class="mode-switch" aria-label="Tool">
-        <button class="mode-button is-active" type="button" data-mode="tuner" aria-pressed="true">
-          Pitch
-        </button>
-        <button class="mode-button" type="button" data-mode="score" aria-pressed="false">
-          Score
-        </button>
-      </nav>
-
-      <section class="mode-view tuner-view" id="tunerView">
+      <section class="mode-view tuner-view" id="tunerView" hidden>
         <section class="pitch-summary" id="pitchSummary" aria-labelledby="pitchNote">
           <div class="accuracy-effect" aria-hidden="true">
             <span></span><span></span><span></span>
@@ -68,6 +90,8 @@
             <span class="deviation-value" id="deviationValue">Connecting</span>
             <span class="deviation-copy" id="deviationCopy"></span>
           </div>
+          <div class="tuning-meter" aria-hidden="true"><span class="meter-band"></span><span class="meter-needle" id="meterNeedle"></span><span class="meter-zero"></span></div>
+          <div class="meter-labels" aria-hidden="true"><span>FLAT</span><span>IN TUNE ±15¢</span><span>SHARP</span></div>
           <p class="pitch-message" id="pitchMessage">Hold a steady note</p>
           <p class="helper-message" id="helperMessage"></p>
           <p class="sr-only" id="screenReaderStatus" aria-live="polite"></p>
@@ -102,7 +126,7 @@
 
         <section class="reference-section" aria-labelledby="referenceTitle">
           <div class="section-label">
-            <h2 id="referenceTitle">Reference tone</h2>
+            <h2 id="referenceTitle">Reference tone <small>Hold to hear</small></h2>
           </div>
           <div class="reference-notes" id="referenceNotes">
             <button class="note-button" type="button" data-offset="-1" aria-label="Play one semitone below">
@@ -127,7 +151,7 @@
         </section>
       </section>
 
-      <section class="mode-view score-view" id="scoreView" hidden>
+      <section class="mode-view score-view" id="scoreView">
         <section class="score-library" aria-labelledby="libraryTitle">
           <div class="section-label">
             <h1 id="libraryTitle">Score library</h1>
@@ -223,7 +247,7 @@
           <section class="part-mixer" aria-labelledby="partMixerTitle">
             <div class="section-label">
               <h2 id="partMixerTitle">Parts</h2>
-              <span>Hold to open score</span>
+              <span>Hold a part to open notation · Device volume applies</span>
             </div>
             <div class="part-list" id="partList"></div>
           </section>
@@ -231,11 +255,11 @@
 
         <p class="score-message" id="scoreMessage" aria-live="polite"></p>
       </section>
-      <footer class="site-footer">
-        Hyunsu Go · INSTRU 18th Tenor · SNU A Cappella
-      </footer>
-    </main>
-
+    </div>
+    </section>
+    <footer class="site-footer"><span>instru<span class="brand-period">.</span></span><p>Hyunsu Go · 18th generation tenor · Made to remember the good noise.</p><a href="#top">Back to top ↑</a></footer>
+    <dialog class="gallery-dialog" id="galleryDialog" aria-labelledby="galleryDialogTitle"><div class="dialog-inner"><button class="dialog-close" type="button" data-gallery-close aria-label="Close gallery">✕</button><div class="dialog-image-wrap"><img id="galleryDialogImage" alt="" /><button type="button" class="dialog-prev" data-gallery-step="-1" aria-label="Previous illustration">←</button><button type="button" class="dialog-next" data-gallery-step="1" aria-label="Next illustration">→</button></div><div class="dialog-caption"><span id="galleryDialogDate"></span><h2 id="galleryDialogTitle"></h2><p id="galleryDialogNote"></p><small id="galleryDialogCount"></small></div></div></dialog>
+    <script type="module" src="./src/archive.js"></script>
     <script type="module" src="./src/app.js"></script>
   </body>
 </html>

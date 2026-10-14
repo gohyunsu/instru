@@ -29,7 +29,7 @@ export const SOLFEGE_NAMES = [
 ];
 
 export const DEFAULT_CONCERT_A = 440;
-export const EXACT_CENTS = 8;
+export const EXACT_CENTS = 15;
 
 export function frequencyToMidi(frequency, concertA = DEFAULT_CONCERT_A) {
   if (!Number.isFinite(frequency) || frequency <= 0) {
