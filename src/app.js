@@ -23,7 +23,7 @@ import { preferredNotationPart } from "./score-preferences.js";
 
 const PART_VOLUME_MIN_DB = -15;
 const PART_VOLUME_MAX_DB = 10;
-const PRACTICE_SCORE_SLUGS = ["disney-medley", "love-yourself"];
+const PRACTICE_SCORE_SLUGS = ["disney-medley"];
 
 function practiceRank(score) {
   const slug = String(score.fileName ?? "")
