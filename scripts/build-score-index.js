@@ -1,29 +1,25 @@
-import { readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import { extname, join, parse, posix, relative } from "node:path";
+import { promisify } from "node:util";
 
 import { titleFromMuseScoreXml } from "../src/score-metadata.js";
+import { scoreDisplayTitle } from "../src/score-titles.js";
 import { extractMuseScoreXml } from "../src/zip.js";
 
 const root = process.cwd();
 const scoreDirectory = join(root, "assets", "scores");
 const outputPath = join(scoreDirectory, "index.json");
 
-async function walk(directory) {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const files = [];
-
-  for (const entry of entries) {
-    const absolutePath = join(directory, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await walk(absolutePath)));
-    } else if (/\.(mscz|mscx)$/i.test(entry.name)) {
-      files.push(absolutePath);
-    }
-  }
-  return files;
-}
-
-const files = (await walk(scoreDirectory)).sort((left, right) =>
+// Only staged/tracked scores can enter the published manifest. A local score
+// dropped into the directory remains private until deliberately added to Git.
+const { stdout } = await promisify(execFile)(
+  "git", ["ls-files", "--cached", "-z", "--", "assets/scores"], { cwd: root },
+);
+const files = stdout.split("\0")
+  .filter((path) => /\.(mscz|mscx)$/i.test(path))
+  .map((path) => join(root, path))
+  .sort((left, right) =>
   left.localeCompare(right, "ko"),
 );
 const scores = [];
@@ -42,7 +38,7 @@ for (const absolutePath of files) {
       : await extractMuseScoreXml(bytes);
 
   scores.push({
-    name: titleFromMuseScoreXml(xml, fileName),
+    name: scoreDisplayTitle(fileName, titleFromMuseScoreXml(xml, fileName)),
     fileName,
     path: posix.join(".", relativePath),
     format: extension,

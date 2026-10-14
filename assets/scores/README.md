@@ -1,13 +1,5 @@
-# MuseScore 보관함
+# Score library
 
-이 폴더에 `.mscz` 또는 `.mscx` 악보 파일을 저장하세요.
+Keep public MuseScore files here as lowercase, hyphenated English filenames, such as `danny-boy.mscz`. The generated `index.json` lists the scores intended for the site. The public build copies only those listed files, so an unrelated local file is not published by accident.
 
-배포 워크플로가 파일 내부의 악보 제목을 읽어 `index.json`을 자동 생성하며, INSTRU의 **보관된 악보** 목록에 표시됩니다.
-
-로컬에서 목록을 갱신하려면 저장소 루트에서 다음 명령을 실행합니다.
-
-```bash
-npm run scores:index
-```
-
-저작권이 있거나 공개 배포하면 안 되는 악보는 이 폴더에 커밋하지 마세요.
+After adding or renaming a score, stage the file and run `npm run scores:index` to refresh the manifest. Only commit scores you may publish.

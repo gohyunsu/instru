@@ -1,27 +1,6 @@
 {
-  "generatedAt": "2026-09-12T14:45:54.378Z",
+  "generatedAt": "2026-10-14T12:53:32.215Z",
   "scores": [
-    {
-      "name": "봄날",
-      "fileName": "봄날.mscz",
-      "path": "assets/scores/봄날.mscz",
-      "format": "mscz",
-      "size": 124177
-    },
-    {
-      "name": "신호등",
-      "fileName": "신호등.mscz",
-      "path": "assets/scores/신호등.mscz",
-      "format": "mscz",
-      "size": 75015
-    },
-    {
-      "name": "아틀란티스 소녀",
-      "fileName": "atlantis-princess.mscz",
-      "path": "assets/scores/atlantis-princess.mscz",
-      "format": "mscz",
-      "size": 206244
-    },
     {
       "name": "A Sky Full of Stars",
       "fileName": "a-sky-full-of-stars.mscz",
@@ -35,6 +14,13 @@
       "path": "assets/scores/and-july.mscz",
       "format": "mscz",
       "size": 244931
+    },
+    {
+      "name": "Atlantis Princess",
+      "fileName": "atlantis-princess.mscz",
+      "path": "assets/scores/atlantis-princess.mscz",
+      "format": "mscz",
+      "size": 206244
     },
     {
       "name": "Candy",
@@ -59,38 +45,52 @@
     },
     {
       "name": "DUMDi DUMDi",
-      "fileName": "dumdi.mscz",
-      "path": "assets/scores/dumdi.mscz",
+      "fileName": "dumdi-dumdi.mscz",
+      "path": "assets/scores/dumdi-dumdi.mscz",
       "format": "mscz",
       "size": 328562
     },
     {
-      "name": "Heal the World",
+      "name": "Heal The World",
       "fileName": "heal-the-world.mscz",
       "path": "assets/scores/heal-the-world.mscz",
       "format": "mscz",
       "size": 277996
     },
     {
-      "name": "Love Youself",
+      "name": "Love Yourself",
       "fileName": "love-yourself.mscz",
       "path": "assets/scores/love-yourself.mscz",
       "format": "mscz",
       "size": 35651
     },
     {
-      "name": "payphone",
+      "name": "Payphone",
       "fileName": "payphone.mscz",
       "path": "assets/scores/payphone.mscz",
       "format": "mscz",
       "size": 35929
     },
     {
-      "name": "The girl from Ipanema",
+      "name": "Spring Day",
+      "fileName": "spring-day.mscz",
+      "path": "assets/scores/spring-day.mscz",
+      "format": "mscz",
+      "size": 124177
+    },
+    {
+      "name": "The Girl From Ipanema",
       "fileName": "the-girl-from-ipanema.mscz",
       "path": "assets/scores/the-girl-from-ipanema.mscz",
       "format": "mscz",
       "size": 217102
+    },
+    {
+      "name": "Traffic Light",
+      "fileName": "traffic-light.mscz",
+      "path": "assets/scores/traffic-light.mscz",
+      "format": "mscz",
+      "size": 75015
     }
   ]
 }

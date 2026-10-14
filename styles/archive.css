@@ -127,6 +127,7 @@ img { display: block; max-width: 100%; }
 .score-player-panel { padding: 28px; }
 .notation-meter { fill: #7b816f; font-size: 9px; font-weight: 700; }
 .notation-slur { fill: none; stroke: var(--notation-ink); stroke-width: 1.1; opacity: .8; }
+[hidden] { display: none !important; }
 .part-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .part-mixer .section-label { flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
 .part-mixer .section-label > span { max-width: 100%; text-align: right; }

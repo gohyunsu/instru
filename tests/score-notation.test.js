@@ -5,10 +5,11 @@ import {
   clefForEvents,
   keySignatureLabel,
   lyricsForPart,
-  measureEntryOffset,
+  measureHeaderWidth,
   noteSpelling,
   positionForScrollLeft,
   scoreOffsetForTime,
+  scoreOffsetForTick,
   scoreTimeForOffset,
   scrollLeftForPosition,
   staffStepForNote,
@@ -91,43 +92,27 @@ test("keeps quarter-note spacing stable when tempo changes", () => {
   assert.equal(keySignatureLabel(-2), "2♭");
 });
 
-test("reserves room after meter and key changes", () => {
-  assert.equal(
-    measureEntryOffset(
-      { startTick: 480 },
-      [{ startTick: 480, timeSignature: "3/4", keySignature: -1 }],
-    ),
-    62,
-  );
-});
+test("keeps note spacing proportional to beats across barlines and meter changes", () => {
+  const score = {
+    division: 480,
+    duration: 8,
+    tempoMap: [{ tick: 0, bpm: 120, seconds: 0 }],
+    measures: [
+      { startTick: 0, timeSignature: "4/4", keySignature: 0 },
+      { startTick: 1920, timeSignature: "3/4", keySignature: -1 },
+      { startTick: 3360, timeSignature: "6/8", keySignature: null },
+    ],
+  };
 
-test("adds entry space to notes and lyrics exactly on a measure boundary", () => {
-  const measures = [
-    { startTick: 0, startSeconds: 0 },
-    { startTick: 1920, startSeconds: 2 },
-  ];
-
-  assert.equal(
-    measureEntryOffset(
-      { startTick: 1920, startSeconds: 2 },
-      measures,
-    ),
-    12,
-  );
-  assert.equal(
-    measureEntryOffset(
-      { startTick: 1680, startSeconds: 1.75 },
-      measures,
-    ),
-    0,
-  );
-  assert.equal(
-    measureEntryOffset(
-      { startSeconds: 2 },
-      [{ startSeconds: 2 }],
-    ),
-    12,
-  );
+  assert.equal(measureHeaderWidth(score.measures[1]), 62);
+  assert.equal(scoreOffsetForTick(score, 480) - scoreOffsetForTick(score, 0), 72);
+  assert.equal(scoreOffsetForTick(score, 720) - scoreOffsetForTick(score, 480), 36);
+  assert.equal(scoreOffsetForTick(score, 1920) - scoreOffsetForTick(score, 1920, true), 62);
+  assert.equal(scoreOffsetForTick(score, 2400) - scoreOffsetForTick(score, 1920), 72);
+  assert.equal(scoreOffsetForTick(score, 3360, true) - scoreOffsetForTick(score, 1920), 216);
+  assert.equal(scoreOffsetForTick(score, 3600) - scoreOffsetForTick(score, 3360), 36);
+  assert.equal(scoreTimeForOffset(score, scoreOffsetForTick(score, 2400)), 2.5);
+  assert.equal(scoreTimeForOffset(score, scoreOffsetForTick(score, 1920, true) + 20), 2);
 });
 
 test("places one lyric verse on the selected part timeline", () => {

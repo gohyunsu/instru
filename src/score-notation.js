@@ -175,48 +175,55 @@ export function positionForScrollLeft(
 
 export function scoreOffsetForTime(score, time) {
   if (!score?.tempoMap?.length) return scrollLeftForPosition(time);
-  return Math.max(0, secondsToTick(time, score.tempoMap, score.division)) /
-    score.division * PIXELS_PER_QUARTER;
+  return scoreOffsetForTick(
+    score,
+    secondsToTick(time, score.tempoMap, score.division),
+  );
 }
 
 export function scoreTimeForOffset(score, offset) {
   if (!score?.tempoMap?.length) {
     return positionForScrollLeft(offset, score?.duration ?? 0);
   }
-  const tick = Math.max(0, offset) / PIXELS_PER_QUARTER * score.division;
+  const tick = scoreTickForOffset(score, offset);
   return clamp(tickToSeconds(tick, score.tempoMap, score.division), 0, score.duration);
 }
 
-export function measureEntryOffset(
-  item,
-  measures,
-  offset = MEASURE_ENTRY_OFFSET,
-) {
-  const itemTick = Number(item?.startTick);
-  const hasTick =
-    item?.startTick !== undefined && Number.isFinite(itemTick);
-  const itemSeconds = Number(item?.startSeconds);
-  const hasSeconds = Number.isFinite(itemSeconds);
-  const measureAtStart = (measures ?? []).find((measure) => {
-    const measureTick = Number(measure.startTick);
-    if (
-      hasTick &&
-      measure.startTick !== undefined &&
-      Number.isFinite(measureTick)
-    ) {
-      return Math.abs(itemTick - measureTick) < 0.001;
-    }
-    return (
-      hasSeconds &&
-      Number.isFinite(Number(measure.startSeconds)) &&
-      Math.abs(itemSeconds - Number(measure.startSeconds)) < 0.0001
-    );
-  });
-  if (!measureAtStart) return 0;
-  return Math.max(0, Number(offset) || 0) +
-    (measureAtStart.timeSignature ? 25 : 0) +
-    (measureAtStart.keySignature !== null &&
-    measureAtStart.keySignature !== undefined ? 25 : 0);
+export function measureHeaderWidth(measure) {
+  return MEASURE_ENTRY_OFFSET +
+    (measure.timeSignature ? 25 : 0) +
+    (measure.keySignature !== null &&
+    measure.keySignature !== undefined ? 25 : 0);
+}
+
+// Music time stays on a fixed quarter-note scale. Barline and signature room
+// shifts every later position equally, rather than shifting only the first note.
+export function scoreOffsetForTick(score, tick, beforeBoundary = false) {
+  const division = score?.division || 480;
+  const target = Math.max(0, Number(tick) || 0);
+  let offset = target / division * PIXELS_PER_QUARTER;
+  for (const measure of score?.measures ?? []) {
+    if (!Number.isFinite(measure.startTick)) continue;
+    if (measure.startTick > target ||
+        (beforeBoundary && measure.startTick === target)) break;
+    offset += measureHeaderWidth(measure);
+  }
+  return offset;
+}
+
+function scoreTickForOffset(score, offset) {
+  const pixelsPerTick = PIXELS_PER_QUARTER / (score.division || 480);
+  const target = Math.max(0, Number(offset) || 0);
+  let headerWidth = 0;
+  for (const measure of score.measures ?? []) {
+    if (!Number.isFinite(measure.startTick)) continue;
+    const barlineOffset = measure.startTick * pixelsPerTick + headerWidth;
+    if (target < barlineOffset) break;
+    const afterHeader = barlineOffset + measureHeaderWidth(measure);
+    if (target <= afterHeader) return measure.startTick;
+    headerWidth += measureHeaderWidth(measure);
+  }
+  return Math.max(0, (target - headerWidth) / pixelsPerTick);
 }
 
 export function keySignatureLabel(count) {
@@ -450,17 +457,15 @@ export class LiveScoreNotation {
     return scoreTimeForOffset(this.score, offset);
   }
 
-  xForTick(tick) {
-    return this.viewportWidth / 2 + tick / this.score.division * PIXELS_PER_QUARTER;
+  xForTick(tick, beforeBoundary = false) {
+    return this.viewportWidth / 2 +
+      scoreOffsetForTick(this.score, tick, beforeBoundary);
   }
 
   xForTimedItem(item) {
-    return (
-      (Number.isFinite(item.startTick)
-        ? this.xForTick(item.startTick)
-        : this.xForTime(item.startSeconds)) +
-      measureEntryOffset(item, this.score?.measures)
-    );
+    return Number.isFinite(item.startTick)
+      ? this.xForTick(item.startTick)
+      : this.xForTime(item.startSeconds);
   }
 
   noteY(event, clef, staffBottom) {
@@ -475,7 +480,7 @@ export class LiveScoreNotation {
   renderEvent(event, clef, group, staffBottom) {
     const startX = this.xForTimedItem(event);
     const endX = Number.isFinite(event.startTick + event.durationTicks)
-      ? this.xForTick(event.startTick + event.durationTicks)
+      ? this.xForTick(event.startTick + event.durationTicks, true)
       : this.xForTime(event.startSeconds + event.durationSeconds);
     const { step, y, spelling } = this.noteY(event, clef, staffBottom);
     const eventGroup = createSvgElement("g", {
@@ -652,7 +657,7 @@ export class LiveScoreNotation {
 
     for (const measure of this.score.measures ?? []) {
       const x = Number.isFinite(measure.startTick)
-        ? this.xForTick(measure.startTick)
+        ? this.xForTick(measure.startTick, true)
         : this.xForTime(measure.startSeconds);
       group.append(
         createSvgElement("line", {

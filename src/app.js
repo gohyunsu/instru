@@ -21,25 +21,14 @@ import {
   decibelsToGain,
   MuseScorePlayer,
 } from "./score-player.js";
+import { scoreDisplayTitle } from "./score-titles.js";
 
 const PART_VOLUME_MIN_DB = -15;
 const PART_VOLUME_MAX_DB = 10;
-const SCORE_TITLE_OVERRIDES = new Map([
-  ["봄날", "Spring Day"],
-  ["신호등", "Traffic Light"],
-  ["아틀란티스 소녀", "Atlantis Princess"],
-  ["love youself", "Love Yourself"],
-  ["payphone", "Payphone"],
-  ["the girl from ipanema", "The Girl From Ipanema"],
-]);
 const FEATURED_SCORES = [
   "Danny Boy", "The Girl From Ipanema", "DUMDi DUMDi",
-  "And July", "Heal the World",
+  "And July", "Heal The World",
 ];
-
-function displayScoreTitle(title) {
-  return SCORE_TITLE_OVERRIDES.get(String(title).toLocaleLowerCase()) ?? title;
-}
 
 const elements = {
   listeningStatus: document.querySelector("#listeningStatus"),
@@ -773,7 +762,7 @@ function renderScore(score) {
   state.selectedPartId = null;
   configureMeasureNavigation(score);
   scorePlayer.load(score);
-  elements.scoreTitle.textContent = displayScoreTitle(score.title);
+  elements.scoreTitle.textContent = scoreDisplayTitle(score.sourceName, score.title);
   elements.scoreMeta.textContent = formatTime(score.duration);
   elements.scoreProgress.max = String(score.duration);
   elements.scoreProgress.value = "0";
@@ -876,10 +865,10 @@ function renderLibrary(scores) {
 
   const orderedScores = [...scores].sort((left, right) => {
     const leftRank = FEATURED_SCORES.findIndex(
-      (title) => title.toLocaleLowerCase() === displayScoreTitle(left.name).toLocaleLowerCase(),
+      (title) => title.toLocaleLowerCase() === left.name.toLocaleLowerCase(),
     );
     const rightRank = FEATURED_SCORES.findIndex(
-      (title) => title.toLocaleLowerCase() === displayScoreTitle(right.name).toLocaleLowerCase(),
+      (title) => title.toLocaleLowerCase() === right.name.toLocaleLowerCase(),
     );
     return (leftRank < 0 ? 999 : leftRank) -
       (rightRank < 0 ? 999 : rightRank);
@@ -891,7 +880,7 @@ function renderLibrary(scores) {
     const copy = document.createElement("div");
     const title = document.createElement("strong");
     const detail = document.createElement("small");
-    title.textContent = displayScoreTitle(score.name);
+    title.textContent = score.name;
     detail.textContent = `${String(score.format).toUpperCase()} · ${formatFileSize(score.size)}`;
     copy.append(title, detail);
     button.append(copy);
