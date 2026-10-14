@@ -20,7 +20,7 @@ const events = [
     date: "05 Sep 2026",
     title: "Our 18th cohort",
     note: "My fellow voices, and an unusually cooperative camera.",
-    images: ["eighteenth-1", "eighteenth-2"],
+    images: ["eighteenth-group-1", "eighteenth-group-2"],
   },
   {
     id: "traditional",
