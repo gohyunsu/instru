@@ -68,7 +68,7 @@ img { display: block; max-width: 100%; }
 .about-section, .history-section, .gallery-section { border-top: 1px solid var(--line); padding-top: 83px; padding-bottom: 105px; }
 .about-section { display: grid; grid-template-columns: 1fr .75fr; gap: 12%; }
 .section-heading h2 { margin-top: 21px; font-size: clamp(43px, 5vw, 69px); line-height: 1.17; }
-.section-heading > p, .gallery-heading p, .practice-heading p { margin: 18px 0 0; color: #8a9084; font-size: 13px; line-height: 1.7; }
+.section-heading > p { margin: 18px 0 0; color: #8a9084; font-size: 13px; line-height: 1.7; }
 .about-copy { padding-top: 45px; }
 .about-copy p { margin: 0 0 18px; color: #56635a; font-size: 15px; line-height: 1.9; }
 .about-copy em { color: var(--ink); }
@@ -95,12 +95,10 @@ img { display: block; max-width: 100%; }
 .song-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 15px; padding: 12px 0; border-top: 1px solid var(--line); font-size: 14px; font-weight: 600; }
 .song-list a { flex: 0 0 auto; color: #56745d; font-size: 12px; font-weight: 700; text-decoration: none; }
 .song-list a:hover { text-decoration: underline; }
-.song-no-video { flex: 0 0 auto; color: #a4a79b; font-size: 11px; font-weight: 400; }
 .ensemble-card { grid-column: 1 / -1; background: #e9eee4; }
 .ensemble-card .team-details { padding-block: 32px 34px; }
 .ensemble-card .song-list { max-width: 670px; }
-.gallery-heading { display: flex; justify-content: space-between; align-items: end; gap: 25px; margin-bottom: 42px; }
-.gallery-heading p { margin-bottom: 5px; text-align: right; }
+.gallery-heading { margin-bottom: 42px; }
 .gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17px; }
 .gallery-card { position: relative; display: block; overflow: hidden; padding: 0; border: 0; background: #d8d0be; cursor: pointer; text-align: left; }
 .gallery-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: transform .45s ease; }
@@ -193,8 +191,7 @@ img { display: block; max-width: 100%; }
   .section-heading h2 { font-size: clamp(39px, 9vw, 57px); }
   .team-grid { grid-template-columns: 1fr; gap: 20px; }
   .team-visual { height: auto; }
-  .gallery-heading, .practice-heading { align-items: start; flex-direction: column; gap: 0; }
-  .gallery-heading p { text-align: left; }
+  .practice-heading { align-items: start; flex-direction: column; gap: 0; }
   .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
   .gallery-card img { aspect-ratio: 1; }
   .gallery-card-label { right: 12px; bottom: 12px; left: 12px; }

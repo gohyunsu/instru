@@ -5,7 +5,7 @@ const events = [
     id: "graduation",
     date: "08 Oct 2026",
     title: "HJ's graduation day",
-    note: "Congratulations on your university graduation, HJ! Here's to more songs together.",
+    note: "Congrats on graduating from university, HJ. Here's to more songs together.",
     images: ["graduation-watercolor"],
   },
   {
@@ -19,7 +19,7 @@ const events = [
     id: "eighteenth",
     date: "05 Sep 2026",
     title: "Our 18th cohort",
-    note: "My fellow voices, and an unusually cooperative camera.",
+    note: "My fellow singers and a surprisingly cooperative camera.",
     images: ["eighteenth-group-1", "eighteenth-group-2"],
   },
   {
@@ -32,7 +32,7 @@ const events = [
   {
     id: "popular",
     date: "05 Sep 2026",
-    title: "Popular team 1",
+    title: "Pop team 1",
     note: "One photo after my first show, one while we were still singing.",
     images: ["popular-stage", "popular-performance"],
   },
@@ -50,7 +50,7 @@ function makeCarousel(host, names, label) {
   host.classList.add("memory-carousel");
   const picture = document.createElement("img");
   picture.loading = "lazy";
-  picture.alt = `Watercolor illustration of ${label}`;
+  picture.alt = `Illustration of ${label}`;
   const counter = document.createElement("span");
   counter.className = "carousel-counter";
   const previous = document.createElement("button");
@@ -64,7 +64,7 @@ function makeCarousel(host, names, label) {
   next.textContent = "→";
   const update = () => {
     picture.src = image(names[current]);
-    picture.alt = `Watercolor illustration ${current + 1} of ${names.length}: ${label}`;
+    picture.alt = `Illustration ${current + 1} of ${names.length}: ${label}`;
     counter.textContent = `${current + 1} / ${names.length}`;
   };
   previous.addEventListener("click", () => {
@@ -98,7 +98,7 @@ let opener = null;
 
 function showDialogImage() {
   dialogImage.src = image(activeEvent.images[activeIndex]);
-  dialogImage.alt = `Watercolor illustration ${activeIndex + 1} of ${activeEvent.images.length}: ${activeEvent.title}`;
+  dialogImage.alt = `Illustration ${activeIndex + 1} of ${activeEvent.images.length}: ${activeEvent.title}`;
   dialogCount.textContent = `${activeIndex + 1} / ${activeEvent.images.length}`;
   dialog.querySelectorAll("[data-gallery-step]").forEach((button) => {
     button.hidden = activeEvent.images.length < 2;

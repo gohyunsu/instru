@@ -880,7 +880,7 @@ function renderLibrary(scores) {
   if (!scores.length) {
     const message = document.createElement("p");
     message.className = "library-empty";
-    message.textContent = "Add scores to assets/scores/ to list them here.";
+    message.textContent = "No scores yet. Choose a MuseScore file to begin.";
     elements.libraryList.append(message);
     return;
   }
