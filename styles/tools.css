@@ -581,8 +581,33 @@ button:focus-visible {
   text-align: left;
 }
 
+.library-item.is-practicing {
+  border-color: var(--accent-line);
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 11%, var(--surface-strong));
+}
+
+.library-item.is-practicing:hover {
+  background: color-mix(in srgb, var(--accent) 17%, var(--surface-strong));
+}
+
 .library-item div {
   min-width: 0;
+}
+
+.library-item-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.library-practicing {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
 
 .library-item strong,

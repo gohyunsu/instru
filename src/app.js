@@ -25,10 +25,14 @@ import { scoreDisplayTitle } from "./score-titles.js";
 
 const PART_VOLUME_MIN_DB = -15;
 const PART_VOLUME_MAX_DB = 10;
-const FEATURED_SCORES = [
-  "Danny Boy", "The Girl From Ipanema", "DUMDi DUMDi",
-  "And July", "Heal The World",
-];
+const PRACTICE_SCORE_SLUGS = ["disney-medley", "love-yourself"];
+
+function practiceRank(score) {
+  const slug = String(score.fileName ?? "")
+    .replace(/\.(mscz|mscx)$/i, "")
+    .toLowerCase();
+  return PRACTICE_SCORE_SLUGS.indexOf(slug);
+}
 
 const elements = {
   listeningStatus: document.querySelector("#listeningStatus"),
@@ -864,25 +868,33 @@ function renderLibrary(scores) {
   }
 
   const orderedScores = [...scores].sort((left, right) => {
-    const leftRank = FEATURED_SCORES.findIndex(
-      (title) => title.toLocaleLowerCase() === left.name.toLocaleLowerCase(),
-    );
-    const rightRank = FEATURED_SCORES.findIndex(
-      (title) => title.toLocaleLowerCase() === right.name.toLocaleLowerCase(),
-    );
-    return (leftRank < 0 ? 999 : leftRank) -
-      (rightRank < 0 ? 999 : rightRank);
+    const leftRank = practiceRank(left);
+    const rightRank = practiceRank(right);
+    return (leftRank < 0 ? PRACTICE_SCORE_SLUGS.length : leftRank) -
+      (rightRank < 0 ? PRACTICE_SCORE_SLUGS.length : rightRank) ||
+      left.name.localeCompare(right.name, "en");
   });
   for (const score of orderedScores) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "library-item";
+    const isPracticing = practiceRank(score) >= 0;
+    if (isPracticing) button.classList.add("is-practicing");
     const copy = document.createElement("div");
+    const heading = document.createElement("div");
+    heading.className = "library-item-heading";
     const title = document.createElement("strong");
     const detail = document.createElement("small");
     title.textContent = score.name;
     detail.textContent = `${String(score.format).toUpperCase()} · ${formatFileSize(score.size)}`;
-    copy.append(title, detail);
+    heading.append(title);
+    if (isPracticing) {
+      const badge = document.createElement("span");
+      badge.className = "library-practicing";
+      badge.textContent = "Practicing";
+      heading.append(badge);
+    }
+    copy.append(heading, detail);
     button.append(copy);
     button.insertAdjacentHTML(
       "beforeend",
