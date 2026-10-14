@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-14T12:53:32.215Z",
+  "generatedAt": "2026-10-14T12:58:40.346Z",
   "scores": [
     {
       "name": "A Sky Full of Stars",
@@ -35,6 +35,13 @@
       "path": "assets/scores/danny-boy.mscz",
       "format": "mscz",
       "size": 194946
+    },
+    {
+      "name": "Disney Medley",
+      "fileName": "disney-medley.mscz",
+      "path": "assets/scores/disney-medley.mscz",
+      "format": "mscz",
+      "size": 347672
     },
     {
       "name": "Dream",

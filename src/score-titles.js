@@ -4,6 +4,7 @@ const PUBLIC_TITLES = new Map([
   ["atlantis-princess", "Atlantis Princess"],
   ["candy", "Candy"],
   ["danny-boy", "Danny Boy"],
+  ["disney-medley", "Disney Medley"],
   ["dream", "Dream"],
   ["dumdi-dumdi", "DUMDi DUMDi"],
   ["heal-the-world", "Heal The World"],

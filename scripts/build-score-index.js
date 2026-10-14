@@ -20,8 +20,8 @@ const files = stdout.split("\0")
   .filter((path) => /\.(mscz|mscx)$/i.test(path))
   .map((path) => join(root, path))
   .sort((left, right) =>
-  left.localeCompare(right, "ko"),
-);
+    left.localeCompare(right, "ko"),
+  );
 const scores = [];
 
 for (const absolutePath of files) {
