@@ -1,6 +1,6 @@
 # Instru, in the margins
 
-A personal archive of Hyunsu Go's time singing tenor with Instru's 18th cohort at Seoul National University. The public site is in English and is hosted with GitHub Pages.
+A personal archive of Hyunsu Go, who joined Instru as part of its 18th cohort and sings tenor in the club at Seoul National University. The public site is in English and is hosted with GitHub Pages.
 
 ## What is here
 
