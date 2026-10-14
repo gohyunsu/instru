@@ -11,7 +11,7 @@ const events = [
   {
     id: "afterparty",
     date: "05 Oct 2026",
-    title: "The encore after the encore",
+    title: "Traditional team afterparty",
     note: "Four frames, several attempts at looking composed.",
     images: ["traditional-afterparty"],
   },
