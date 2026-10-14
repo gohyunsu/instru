@@ -48,10 +48,10 @@ img { display: block; max-width: 100%; }
 .header-aside { justify-self: end; color: #8b9186; font-family: "Playfair Display", Georgia, serif; font-size: 13px; font-style: italic; }
 .hero { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: center; gap: clamp(35px, 5vw, 88px); min-height: 640px; padding-top: 60px; padding-bottom: 90px; }
 .hero-copy { position: relative; padding-bottom: 10px; }
-.eyebrow, .section-number, .team-index { color: #937b60; font-size: 10px; font-weight: 700; letter-spacing: .19em; }
+.eyebrow, .section-number, .group-label { color: #937b60; font-size: 10px; font-weight: 700; letter-spacing: .19em; }
 .eyebrow { display: flex; align-items: center; gap: 12px; margin: 0 0 27px; }
 .eyebrow-line { display: inline-block; width: 31px; height: 1px; background: #af9270; }
-.hero h1, .section-heading h2, .finale-copy h3 { margin: 0; color: var(--ink); font-family: "Playfair Display", Georgia, serif; font-weight: 400; letter-spacing: -.055em; }
+.hero h1, .section-heading h2 { margin: 0; color: var(--ink); font-family: "Playfair Display", Georgia, serif; font-weight: 400; letter-spacing: -.055em; }
 .hero h1 { font-size: clamp(62px, 6.7vw, 104px); line-height: 1.04; }
 .hero h1 em, .section-heading h2 em { color: #708b73; font-weight: 400; }
 .hero-intro { max-width: 405px; margin: 29px 0 0; color: #58645b; font-size: 16px; line-height: 1.75; }
@@ -72,7 +72,7 @@ img { display: block; max-width: 100%; }
 .about-copy p { margin: 0 0 18px; color: #56635a; font-size: 15px; line-height: 1.9; }
 .about-copy em { color: var(--ink); }
 .social-links { display: flex; gap: 26px; margin-top: 29px; }
-.social-links a, .watch-link { color: #47684f; font-size: 13px; font-weight: 700; text-decoration-thickness: 1px; text-underline-offset: 6px; }
+.social-links a { color: #47684f; font-size: 13px; font-weight: 700; text-decoration-thickness: 1px; text-underline-offset: 6px; }
 .history-section > .section-heading { margin-bottom: 48px; }
 .performance-intro { display: flex; align-items: center; gap: 23px; padding: 0 0 27px; border-bottom: 1px solid var(--line); }
 .performance-date { display: inline-flex; align-items: center; gap: 7px; color: #a88562; font-family: "Playfair Display", Georgia, serif; font-size: 49px; line-height: 1; }
@@ -92,13 +92,11 @@ img { display: block; max-width: 100%; }
 .song-list { margin: 0; padding: 0; list-style: none; }
 .song-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 15px; padding: 12px 0; border-top: 1px solid var(--line); font-size: 14px; font-weight: 600; }
 .song-list a { flex: 0 0 auto; color: #56745d; font-size: 12px; font-weight: 700; text-decoration: none; }
-.song-list a:hover, .watch-link:hover { text-decoration: underline; }
+.song-list a:hover { text-decoration: underline; }
 .song-no-video { flex: 0 0 auto; color: #a4a79b; font-size: 11px; font-weight: 400; }
-.finale-card { display: grid; grid-template-columns: 1fr .7fr; margin-top: 28px; border: 1px solid var(--line); background: #e9eee4; }
-.finale-visual { min-height: 360px; }
-.finale-copy { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: clamp(30px, 5vw, 70px); }
-.finale-copy h3 { margin-top: 18px; font-size: clamp(35px, 3.5vw, 52px); line-height: 1.13; }
-.finale-copy p { max-width: 360px; margin: 22px 0 28px; color: #5f6d61; font-size: 14px; line-height: 1.8; }
+.ensemble-card { grid-column: 1 / -1; background: #e9eee4; }
+.ensemble-card .team-details { padding-block: 32px 34px; }
+.ensemble-card .song-list { max-width: 670px; }
 .gallery-heading { display: flex; justify-content: space-between; align-items: end; gap: 25px; margin-bottom: 42px; }
 .gallery-heading p { margin-bottom: 5px; text-align: right; }
 .gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17px; }
@@ -167,7 +165,6 @@ img { display: block; max-width: 100%; }
   .hero { min-height: 0; padding-top: 65px; gap: 35px; }
   .hero h1 { font-size: clamp(54px, 7.8vw, 76px); }
   .about-section { gap: 7%; }
-  .finale-card { grid-template-columns: 1fr .9fr; }
 }
 @media (max-width: 700px) {
   .section-wrap, .app-shell, .site-footer { width: min(100% - 36px, 560px); }
@@ -188,9 +185,6 @@ img { display: block; max-width: 100%; }
   .section-heading h2 { font-size: clamp(39px, 9vw, 57px); }
   .team-grid { grid-template-columns: 1fr; gap: 20px; }
   .team-visual { height: clamp(230px, 67vw, 375px); }
-  .finale-card { grid-template-columns: 1fr; }
-  .finale-visual { min-height: 260px; height: 320px; }
-  .finale-copy { padding: 30px; }
   .gallery-heading, .practice-heading { align-items: start; flex-direction: column; gap: 0; }
   .gallery-heading p { text-align: left; }
   .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
