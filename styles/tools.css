@@ -233,15 +233,8 @@ button:focus-visible {
   margin-bottom: 22px;
 }
 
-.piano-eyebrow {
-  color: var(--accent);
-  font-size: 10px;
-  font-weight: 750;
-  letter-spacing: 0.16em;
-}
-
 .piano-heading h1 {
-  margin: 5px 0 0;
+  margin: 0;
   font-family: "Playfair Display", Georgia, serif;
   font-size: clamp(28px, 4vw, 40px);
   font-weight: 400;
@@ -395,13 +388,14 @@ button:focus-visible {
 
 @media (orientation: portrait) {
   .piano-layout {
+    --piano-portrait-height: clamp(520px, 82dvh, 900px);
     display: grid;
     grid-template-columns: minmax(0, 1fr) 38px;
     gap: 12px;
   }
 
   .piano-viewport {
-    height: clamp(360px, 62dvh, 660px);
+    height: var(--piano-portrait-height);
     overflow-x: hidden;
     overflow-y: auto;
   }
@@ -449,7 +443,7 @@ button:focus-visible {
   }
 
   .piano-range-wrap {
-    height: clamp(360px, 62dvh, 660px);
+    height: var(--piano-portrait-height);
     flex-direction: column-reverse;
     gap: 6px;
   }
