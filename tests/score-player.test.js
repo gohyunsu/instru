@@ -5,6 +5,7 @@ import {
   decibelsToGain,
   MAX_PART_DECIBELS,
   MuseScorePlayer,
+  previewEventsAt,
   SCORE_MASTER_GAIN,
 } from "../src/score-player.js";
 
@@ -162,6 +163,86 @@ test("seek positions are clamped to the score duration", () => {
   assert.equal(player.position, 8);
   player.seek(-5);
   assert.equal(player.position, 0);
+});
+
+test("preview selects the displayed part's sounding notes, including chords", () => {
+  const chordScore = {
+    ...score,
+    events: [
+      { partId: "soprano", startSeconds: 1, durationSeconds: 1, midi: 69 },
+      { partId: "soprano", startSeconds: 1, durationSeconds: 1, midi: 72 },
+      { partId: "bass", startSeconds: 1, durationSeconds: 1, midi: 45 },
+    ],
+  };
+  assert.deepEqual(previewEventsAt(chordScore, "soprano", 1.5).map((note) => note.midi), [69, 72]);
+  assert.deepEqual(previewEventsAt(chordScore, "soprano", 2), []);
+  assert.deepEqual(previewEventsAt(chordScore, "soprano", 0.5), []);
+});
+
+test("preview sustains while held without moving playback, then releases", async () => {
+  const player = new MuseScorePlayer();
+  player.load(score);
+  const oscillators = [];
+  const context = {
+    currentTime: 10,
+    createOscillator() {
+      const oscillator = {
+        frequency: { setValueAtTime() {} },
+        connect(gain) { return gain; },
+        addEventListener() {},
+        start() { this.started = true; },
+        stop(at) { this.stoppedAt = at; },
+      };
+      oscillators.push(oscillator);
+      return oscillator;
+    },
+    createGain() {
+      return {
+        gain: {
+          value: 0,
+          setValueAtTime(value) { this.value = value; },
+          linearRampToValueAtTime(value) { this.value = value; },
+          cancelScheduledValues() {},
+          setTargetAtTime(value) { this.value = value; },
+        },
+        connect() { return this; },
+        disconnect() {},
+      };
+    },
+  };
+  player.ensureContext = async () => { player.context = context; };
+  player.outputForPart = () => ({});
+
+  assert.equal(await player.previewAt(0.25, "soprano"), true);
+  assert.equal(oscillators.length, 1);
+  assert.equal(oscillators[0].started, true);
+  assert.equal(oscillators[0].stoppedAt, undefined);
+  assert.equal(player.position, 0);
+  assert.equal(player.playing, false);
+
+  player.stopPreview();
+  assert.equal(oscillators[0].stoppedAt, 10.06);
+  player.stopPreview(true);
+  assert.equal(oscillators[0].stoppedAt, 10);
+});
+
+test("muted parts do not sound during score preview", async () => {
+  const player = new MuseScorePlayer();
+  player.load(score);
+  player.setPartEnabled("soprano", false);
+  assert.equal(await player.previewAt(0.25, "soprano"), false);
+});
+
+test("releasing before audio resumes prevents a late preview", async () => {
+  const player = new MuseScorePlayer();
+  player.load(score);
+  let resume;
+  player.ensureContext = () => new Promise((resolve) => { resume = resolve; });
+  const preview = player.previewAt(0.25, "soprano");
+  player.stopPreview();
+  resume();
+  assert.equal(await preview, false);
+  assert.equal(player.previewNodes.size, 0);
 });
 
 test("returns quiet visualization bands before audio starts", () => {

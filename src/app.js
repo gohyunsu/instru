@@ -13,11 +13,11 @@ import { readMuseScoreFile } from "./musescore-parser.js";
 import { VerticalPitchGraph } from "./pitch-graph.js";
 import { PitchStabilizer } from "./pitch-stabilizer.js";
 import { measureIndexAtPosition } from "./score-lyrics.js";
-import { LiveScoreNotation } from "./score-notation.js";
+import { LiveScoreNotation } from "./score-notation.js?v=hold-1";
 import {
   decibelsToGain,
   MuseScorePlayer,
-} from "./score-player.js";
+} from "./score-player.js?v=hold-1";
 import { scoreDisplayTitle } from "./score-titles.js";
 import { preferredNotationPart } from "./score-preferences.js";
 
@@ -118,6 +118,12 @@ const scorePlayer = new MuseScorePlayer({
 });
 let microphoneStopPromise = Promise.resolve();
 scoreNotation.setSeekHandler((position) => scorePlayer.seek(position));
+scoreNotation.setHoldHandlers({
+  canHold: () => state.mode === "score" && !scorePlayer.playing,
+  onPrepare: () => scorePlayer.preparePreview().catch(() => {}),
+  onStart: (position, partId) => scorePlayer.previewAt(position, partId).catch(() => {}),
+  onEnd: () => scorePlayer.stopPreview(),
+});
 
 const visualizerBars = Array.from({ length: 21 }, () => {
   const bar = document.createElement("span");
@@ -576,6 +582,7 @@ function setMode(mode) {
     return;
   }
 
+  scoreNotation.cancelHold();
   state.mode = mode;
   elements.tunerView.hidden = mode !== "tuner";
   elements.scoreView.hidden = mode !== "score";
@@ -680,6 +687,7 @@ function setPartVolumeDecibels(partId, decibels) {
 }
 
 function setScorePart(partId, { vibrate = true } = {}) {
+  scoreNotation.cancelHold();
   const previousPartId = state.selectedPartId;
   const nextPartId = state.selectedPartId === partId ? null : partId;
   state.selectedPartId = nextPartId;
@@ -974,6 +982,7 @@ async function toggleScorePlayback() {
   if (!state.score) {
     return;
   }
+  scoreNotation.cancelHold();
   try {
     if (scorePlayer.playing) {
       scorePlayer.pause();
@@ -1119,12 +1128,15 @@ document.addEventListener(
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     recoverAudio();
+  } else {
+    scoreNotation.cancelHold();
   }
 });
 
 window.addEventListener("pagehide", () => {
   state.unloading = true;
   state.listening = false;
+  scoreNotation.cancelHold();
   window.clearTimeout(state.reconnectTimer);
   if (state.wakeLock) {
     state.wakeLock.release().catch(() => {});

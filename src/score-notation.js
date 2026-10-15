@@ -303,6 +303,14 @@ export class LiveScoreNotation {
     this.scrollCommitTimer = null;
     this.programmaticUntil = 0;
     this.exploringUntil = 0;
+    this.onHoldPrepare = null;
+    this.onHoldStart = null;
+    this.onHoldEnd = null;
+    this.canHold = null;
+    this.holdPointerId = null;
+    this.holdOrigin = null;
+    this.holdTimer = null;
+    this.holdActive = false;
 
     this.svg = createSvgElement("svg", {
       class: "notation-svg",
@@ -314,13 +322,28 @@ export class LiveScoreNotation {
     this.empty.textContent = "Hold a part to open";
     this.container.replaceChildren(this.svg, this.empty);
 
-    this.container.addEventListener("pointerdown", () => this.beginExploring(), {
+    this.container.addEventListener("pointerdown", (event) => this.handlePointerDown(event), {
       passive: true,
+    });
+    window.addEventListener("pointermove", (event) => this.handlePointerMove(event), {
+      passive: true,
+    });
+    for (const type of ["pointerup", "pointercancel"]) {
+      window.addEventListener(type, (event) => {
+        if (event.pointerId === this.holdPointerId) this.cancelHold();
+      });
+    }
+    window.addEventListener("blur", () => this.cancelHold());
+    this.container.addEventListener("contextmenu", (event) => {
+      if (this.holdPointerId !== null) event.preventDefault();
     });
     this.container.addEventListener("wheel", () => this.beginExploring(), {
       passive: true,
     });
-    this.container.addEventListener("scroll", () => this.handleScroll(), {
+    this.container.addEventListener("scroll", () => {
+      this.cancelHold();
+      this.handleScroll();
+    }, {
       passive: true,
     });
 
@@ -334,6 +357,7 @@ export class LiveScoreNotation {
   }
 
   setScore(score) {
+    this.cancelHold();
     this.score = score;
     this.partId = null;
     this.position = 0;
@@ -359,6 +383,7 @@ export class LiveScoreNotation {
   }
 
   clear() {
+    this.cancelHold();
     window.clearTimeout(this.scrollCommitTimer);
     this.score = null;
     this.partId = null;
@@ -379,6 +404,7 @@ export class LiveScoreNotation {
   }
 
   setPart(partId) {
+    this.cancelHold();
     const exists = this.score?.parts.some((part) => part.id === partId);
     this.partId = exists ? partId : null;
     this.updateLabel();
@@ -388,6 +414,72 @@ export class LiveScoreNotation {
 
   setSeekHandler(handler) {
     this.onSeek = handler;
+  }
+
+  setHoldHandlers({ onPrepare, onStart, onEnd, canHold }) {
+    this.onHoldPrepare = onPrepare;
+    this.onHoldStart = onStart;
+    this.onHoldEnd = onEnd;
+    this.canHold = canHold;
+  }
+
+  timeForPointer(clientX) {
+    const rect = this.container.getBoundingClientRect();
+    const offset = this.container.scrollLeft + clientX - rect.left -
+      this.viewportWidth / 2;
+    let nearest = null;
+    let distance = 12;
+    for (const event of this.eventsByPart.get(this.partId) ?? []) {
+      const startOffset = Number.isFinite(event.startTick)
+        ? scoreOffsetForTick(this.score, event.startTick)
+        : this.offsetForTime(event.startSeconds);
+      const nextDistance = Math.abs(startOffset - offset);
+      if (nextDistance < distance) {
+        nearest = event;
+        distance = nextDistance;
+      }
+    }
+    return nearest?.startSeconds ?? this.timeForOffset(offset);
+  }
+
+  handlePointerDown(event) {
+    this.beginExploring();
+    if (this.holdPointerId !== null) {
+      this.cancelHold();
+      return;
+    }
+    if (
+      !this.score || !this.partId || !this.onHoldStart ||
+      !this.canHold?.() ||
+      (event.pointerType === "mouse" && event.button !== 0)
+    ) return;
+
+    this.holdPointerId = event.pointerId;
+    this.holdOrigin = { x: event.clientX, y: event.clientY };
+    this.onHoldPrepare?.();
+    this.holdTimer = window.setTimeout(() => {
+      this.holdTimer = null;
+      if (this.holdPointerId !== event.pointerId || !this.canHold?.()) return;
+      this.holdActive = true;
+      this.onHoldStart(this.timeForPointer(this.holdOrigin.x), this.partId);
+    }, 480);
+  }
+
+  handlePointerMove(event) {
+    if (event.pointerId !== this.holdPointerId || !this.holdOrigin) return;
+    if (Math.hypot(
+      event.clientX - this.holdOrigin.x,
+      event.clientY - this.holdOrigin.y,
+    ) > 12) this.cancelHold();
+  }
+
+  cancelHold() {
+    window.clearTimeout(this.holdTimer);
+    this.holdTimer = null;
+    this.holdPointerId = null;
+    this.holdOrigin = null;
+    if (this.holdActive) this.onHoldEnd?.();
+    this.holdActive = false;
   }
 
   refreshTheme() {

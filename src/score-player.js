@@ -14,6 +14,16 @@ export function decibelsToGain(decibels) {
   return Number.isFinite(value) ? 10 ** (value / 20) : 1;
 }
 
+export function previewEventsAt(score, partId, position) {
+  if (!score?.parts.some((part) => part.id === partId)) return [];
+  const time = clamp(Number(position) || 0, 0, score.duration);
+  return score.events.filter((event) =>
+    event.partId === partId &&
+    event.startSeconds <= time + 0.005 &&
+    event.startSeconds + event.durationSeconds > time + 0.005,
+  );
+}
+
 const MAX_PART_GAIN = decibelsToGain(MAX_PART_DECIBELS);
 
 export class MuseScorePlayer {
@@ -37,6 +47,8 @@ export class MuseScorePlayer {
     this.nextEventIndex = 0;
     this.scheduler = null;
     this.nodes = new Set();
+    this.previewNodes = new Set();
+    this.previewGeneration = 0;
   }
 
   load(score) {
@@ -217,11 +229,76 @@ export class MuseScorePlayer {
     this.onProgress(position, this.score.duration);
   }
 
+  async preparePreview() {
+    if (this.score && !this.playing) await this.ensureContext();
+  }
+
+  async previewAt(position, partId) {
+    this.stopPreview();
+    if (!this.score || this.playing || !this.enabledParts.has(partId)) return false;
+    const score = this.score;
+    const events = previewEventsAt(score, partId, position);
+    if (!events.length) return false;
+    const generation = this.previewGeneration;
+
+    await this.ensureContext();
+    if (generation !== this.previewGeneration || this.playing || this.score !== score) {
+      return false;
+    }
+
+    const now = this.context.currentTime;
+    const peakScale = 0.52 / Math.sqrt(events.length);
+    for (const event of events) {
+      const oscillator = this.context.createOscillator();
+      const gain = this.context.createGain();
+      const node = { oscillator, gain, partId };
+      if (this.voiceWave && oscillator.setPeriodicWave) {
+        oscillator.setPeriodicWave(this.voiceWave);
+      } else {
+        oscillator.type = "triangle";
+      }
+      oscillator.frequency.setValueAtTime(midiToFrequency(event.midi), now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(
+        Math.max(0.02, peakScale * event.velocity),
+        now + 0.018,
+      );
+      oscillator.connect(gain).connect(this.outputForPart(partId));
+      oscillator.addEventListener("ended", () => {
+        gain.disconnect();
+        this.previewNodes.delete(node);
+      }, { once: true });
+      this.previewNodes.add(node);
+      oscillator.start(now);
+    }
+    return true;
+  }
+
+  stopPreview(immediate = false) {
+    this.previewGeneration += 1;
+    const now = this.context?.currentTime ?? 0;
+    for (const node of this.previewNodes) {
+      node.gain.gain.cancelScheduledValues(now);
+      if (immediate) {
+        node.gain.gain.setValueAtTime(0.0001, now);
+      } else {
+        node.gain.gain.setValueAtTime(node.gain.gain.value, now);
+        node.gain.gain.setTargetAtTime(0.0001, now, 0.012);
+      }
+      try {
+        node.oscillator.stop(immediate ? now : now + 0.06);
+      } catch {
+        // Already stopped.
+      }
+    }
+  }
+
   async play() {
     if (!this.score || this.playing) {
       return;
     }
     await this.ensureContext();
+    this.stopPreview(true);
 
     if (this.position >= this.score.duration - 0.03) {
       this.position = 0;
@@ -251,6 +328,7 @@ export class MuseScorePlayer {
   }
 
   async suspendAudio() {
+    this.stopPreview(true);
     if (this.context?.state === "running") {
       await this.context.suspend();
     }
@@ -276,6 +354,7 @@ export class MuseScorePlayer {
   }
 
   stop() {
+    this.stopPreview(true);
     const wasPlaying = this.playing;
     this.playing = false;
     this.position = 0;
@@ -294,6 +373,7 @@ export class MuseScorePlayer {
     if (!this.score) {
       return;
     }
+    this.stopPreview(true);
     const wasPlaying = this.playing;
     if (wasPlaying) {
       this.pause();
@@ -312,6 +392,9 @@ export class MuseScorePlayer {
     } else {
       this.enabledParts.delete(partId);
       this.stopNodes(partId);
+      if ([...this.previewNodes].some((node) => node.partId === partId)) {
+        this.stopPreview(true);
+      }
     }
 
     if (this.playing) {
