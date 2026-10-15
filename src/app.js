@@ -10,6 +10,7 @@ import {
   midiToNote,
 } from "./music.js";
 import { readMuseScoreFile } from "./musescore-parser.js";
+import { PianoKeyboard } from "./piano.js?v=piano-1";
 import { VerticalPitchGraph } from "./pitch-graph.js";
 import { PitchStabilizer } from "./pitch-stabilizer.js";
 import { measureIndexAtPosition } from "./score-lyrics.js";
@@ -38,6 +39,13 @@ const elements = {
   modeButtons: [...document.querySelectorAll(".mode-button")],
   tunerView: document.querySelector("#tunerView"),
   scoreView: document.querySelector("#scoreView"),
+  pianoView: document.querySelector("#pianoView"),
+  pianoViewport: document.querySelector("#pianoViewport"),
+  pianoKeys: document.querySelector("#pianoKeys"),
+  pianoRangeMap: document.querySelector("#pianoRangeMap"),
+  pianoMapKeys: document.querySelector("#pianoMapKeys"),
+  pianoRangeSelection: document.querySelector("#pianoRangeSelection"),
+  pianoRangeLabel: document.querySelector("#pianoRangeLabel"),
   pitchSummary: document.querySelector("#pitchSummary"),
   pitchGraph: document.querySelector("#pitchGraph"),
   pitchNote: document.querySelector("#pitchNote"),
@@ -115,6 +123,19 @@ const scoreNotation = new LiveScoreNotation(
 const scorePlayer = new MuseScorePlayer({
   onStateChange: handleScorePlaybackState,
   onProgress: handleScoreProgress,
+});
+const piano = new PianoKeyboard({
+  viewport: elements.pianoViewport,
+  keys: elements.pianoKeys,
+  map: elements.pianoRangeMap,
+  mapKeys: elements.pianoMapKeys,
+  selection: elements.pianoRangeSelection,
+  rangeLabel: elements.pianoRangeLabel,
+  onNotesChange: (notes) => {
+    if (state.mode !== "piano") return;
+    setStatus(notes.length ? `Playing ${formatNote(notes.at(-1))}` : "Piano ready",
+      notes.length ? "tone" : "ready");
+  },
 });
 let microphoneStopPromise = Promise.resolve();
 scoreNotation.setSeekHandler((position) => scorePlayer.seek(position));
@@ -583,9 +604,11 @@ function setMode(mode) {
   }
 
   scoreNotation.cancelHold();
+  if (state.mode === "piano") piano.suspend().catch(() => {});
   state.mode = mode;
   elements.tunerView.hidden = mode !== "tuner";
   elements.scoreView.hidden = mode !== "score";
+  elements.pianoView.hidden = mode !== "piano";
   for (const button of elements.modeButtons) {
     const active = button.dataset.mode === mode;
     button.classList.toggle("is-active", active);
@@ -608,7 +631,7 @@ function setMode(mode) {
       const position = scorePlayer.currentPosition();
       scoreNotation.render(position, true);
     }
-  } else {
+  } else if (mode === "tuner") {
     tonePlayer.stop();
     scorePlayer.pause();
     scorePlayer.suspendAudio().catch(() => {});
@@ -623,6 +646,15 @@ function setMode(mode) {
         startListening();
       }
     });
+  } else {
+    tonePlayer.suspend().catch(() => {});
+    scorePlayer.pause();
+    scorePlayer.suspendAudio().catch(() => {});
+    window.clearTimeout(state.reconnectTimer);
+    microphoneStopPromise = stopListening().catch(() => {});
+    graph.addGap();
+    setStatus("Piano ready");
+    window.requestAnimationFrame(() => piano.refresh());
   }
 }
 
@@ -1130,6 +1162,7 @@ document.addEventListener("visibilitychange", () => {
     recoverAudio();
   } else {
     scoreNotation.cancelHold();
+    piano.stopAll();
   }
 });
 
@@ -1137,6 +1170,7 @@ window.addEventListener("pagehide", () => {
   state.unloading = true;
   state.listening = false;
   scoreNotation.cancelHold();
+  piano.stopAll();
   window.clearTimeout(state.reconnectTimer);
   if (state.wakeLock) {
     state.wakeLock.release().catch(() => {});
