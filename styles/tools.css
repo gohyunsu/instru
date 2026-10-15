@@ -376,7 +376,6 @@ button:focus-visible {
     0 14px 42px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
-.graph-heading,
 .section-label {
   justify-content: space-between;
 }
@@ -390,7 +389,6 @@ button:focus-visible {
   letter-spacing: -0.01em;
 }
 
-.graph-heading > span,
 .section-label > span {
   color: var(--muted);
   font-size: 11px;
@@ -431,10 +429,6 @@ button:focus-visible {
   font-variant-numeric: tabular-nums;
   text-align: left;
   pointer-events: none;
-}
-
-.time-label-past {
-  top: 6px;
 }
 
 .time-label-now {
