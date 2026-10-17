@@ -14,11 +14,12 @@ import { PianoKeyboard } from "./piano.js?v=piano-1";
 import { VerticalPitchGraph } from "./pitch-graph.js";
 import { PitchStabilizer } from "./pitch-stabilizer.js";
 import { measureIndexAtPosition } from "./score-lyrics.js";
+import { ScoreMediaSession } from "./score-media-session.js?v=media-1";
 import { LiveScoreNotation } from "./score-notation.js?v=hold-1";
 import {
   decibelsToGain,
   MuseScorePlayer,
-} from "./score-player.js?v=hold-1";
+} from "./score-player.js?v=media-1";
 import { scoreDisplayTitle } from "./score-titles.js";
 import { preferredNotationPart } from "./score-preferences.js";
 
@@ -106,6 +107,8 @@ const state = {
   accuracyLocked: false,
   score: null,
   scoreLoading: false,
+  scorePlaybackAttempt: 0,
+  scorePlaybackStarting: false,
   scrubbing: false,
   selectedPartId: null,
 };
@@ -123,6 +126,19 @@ const scoreNotation = new LiveScoreNotation(
 const scorePlayer = new MuseScorePlayer({
   onStateChange: handleScorePlaybackState,
   onProgress: handleScoreProgress,
+});
+const scoreMediaSession = new ScoreMediaSession({
+  onPlay: () => {
+    if (state.mode === "score" && state.score &&
+      !scorePlayer.playing && !state.scorePlaybackStarting) {
+      void startScorePlayback();
+    }
+  },
+  onPause: pauseScorePlayback,
+  onStop: () => {
+    pauseScorePlayback();
+    scorePlayer.stop();
+  },
 });
 const piano = new PianoKeyboard({
   viewport: elements.pianoViewport,
@@ -615,6 +631,11 @@ function setMode(mode) {
     button.setAttribute("aria-pressed", String(active));
   }
 
+  if (mode !== "score") {
+    pauseScorePlayback();
+    scoreMediaSession.deactivate();
+  }
+
   if (mode === "score") {
     tonePlayer.suspend().catch(() => {});
     window.clearTimeout(state.reconnectTimer);
@@ -630,10 +651,14 @@ function setMode(mode) {
     if (state.score) {
       const position = scorePlayer.currentPosition();
       scoreNotation.render(position, true);
+      scoreMediaSession.setScore(
+        elements.scoreTitle.textContent,
+        state.score.duration,
+        position,
+      );
     }
   } else if (mode === "tuner") {
     tonePlayer.stop();
-    scorePlayer.pause();
     scorePlayer.suspendAudio().catch(() => {});
     tonePlayer.prepare().catch(() => {
       // The reference button will retry inside its own user gesture.
@@ -648,7 +673,6 @@ function setMode(mode) {
     });
   } else {
     tonePlayer.suspend().catch(() => {});
-    scorePlayer.pause();
     scorePlayer.suspendAudio().catch(() => {});
     window.clearTimeout(state.reconnectTimer);
     microphoneStopPromise = stopListening().catch(() => {});
@@ -825,6 +849,9 @@ function renderScore(score) {
   configureMeasureNavigation(score);
   scorePlayer.load(score);
   elements.scoreTitle.textContent = scoreDisplayTitle(score.sourceName, score.title);
+  if (state.mode === "score") {
+    scoreMediaSession.setScore(elements.scoreTitle.textContent, score.duration);
+  }
   elements.scoreMeta.textContent = formatTime(score.duration);
   elements.scoreProgress.max = String(score.duration);
   elements.scoreProgress.value = "0";
@@ -889,6 +916,8 @@ async function loadScoreBytes(bytes, fileName) {
     return;
   }
   state.scoreLoading = true;
+  pauseScorePlayback();
+  scoreMediaSession.deactivate();
   scorePlayer.stop();
   setStatus("Reading score", "paused");
   setScoreMessage(`Reading ${fileName}…`);
@@ -997,6 +1026,8 @@ async function loadScoreLibrary() {
 }
 
 function resetScoreSelection() {
+  pauseScorePlayback();
+  scoreMediaSession.deactivate();
   scorePlayer.stop();
   scoreNotation.clear();
   state.selectedPartId = null;
@@ -1010,25 +1041,53 @@ function resetScoreSelection() {
   setScoreMessage("");
 }
 
-async function toggleScorePlayback() {
-  if (!state.score) {
-    return;
-  }
+function pauseScorePlayback() {
+  state.scorePlaybackAttempt += 1;
+  state.scorePlaybackStarting = false;
+  scorePlayer.pause();
+  scoreMediaSession.pause();
+}
+
+async function startScorePlayback() {
+  if (!state.score || state.mode !== "score" || scorePlayer.playing ||
+    state.scorePlaybackStarting) return;
+  const attempt = ++state.scorePlaybackAttempt;
+  const score = state.score;
+  state.scorePlaybackStarting = true;
   scoreNotation.cancelHold();
+  // Claim Android media focus inside the button/media-key gesture.
+  scoreMediaSession.start();
   try {
-    if (scorePlayer.playing) {
-      scorePlayer.pause();
-    } else {
-      await scorePlayer.play();
-      requestWakeLock();
-    }
+    await scorePlayer.play();
+    if (attempt !== state.scorePlaybackAttempt || state.score !== score ||
+      state.mode !== "score") return;
+    if (scorePlayer.playing) requestWakeLock();
+    else scoreMediaSession.pause();
   } catch {
-    setStatus("Playback unavailable", "error");
-    setScoreMessage("Could not start score playback in this browser.", true);
+    if (attempt === state.scorePlaybackAttempt) {
+      scoreMediaSession.pause();
+      setStatus("Playback unavailable", "error");
+      setScoreMessage("Could not start score playback in this browser.", true);
+    }
+  } finally {
+    if (attempt === state.scorePlaybackAttempt) {
+      state.scorePlaybackStarting = false;
+    }
+  }
+}
+
+function toggleScorePlayback() {
+  if (!state.score) return;
+  if (scorePlayer.playing || state.scorePlaybackStarting) {
+    pauseScorePlayback();
+  } else {
+    void startScorePlayback();
   }
 }
 
 function handleScorePlaybackState(playing) {
+  if (playing) scoreMediaSession.start();
+  else scoreMediaSession.pause();
   elements.scorePlayButton.classList.toggle("is-playing", playing);
   elements.scorePlayButton.setAttribute(
     "aria-label",
@@ -1045,6 +1104,7 @@ function handleScoreProgress(position, duration) {
     elements.scoreCurrentTime.textContent = formatTime(position);
   }
   elements.scoreDuration.textContent = formatTime(duration);
+  scoreMediaSession.updatePosition(position);
   scoreNotation.render(position);
   updateMeasureNavigation(position);
 }
@@ -1169,6 +1229,8 @@ document.addEventListener("visibilitychange", () => {
 window.addEventListener("pagehide", () => {
   state.unloading = true;
   state.listening = false;
+  pauseScorePlayback();
+  scoreMediaSession.deactivate();
   scoreNotation.cancelHold();
   piano.stopAll();
   window.clearTimeout(state.reconnectTimer);

@@ -59,6 +59,22 @@ test("loads all parts enabled and seeks to a requested position", () => {
   assert.equal(progress.at(-1), 4.25);
 });
 
+test("pause cancels a playback start still waiting for audio context", async () => {
+  const player = new MuseScorePlayer();
+  player.load(score);
+  let resume;
+  player.ensureContext = () => new Promise((resolve) => { resume = resolve; });
+  player.context = { currentTime: 2 };
+
+  const starting = player.play();
+  player.pause();
+  resume();
+  await starting;
+
+  assert.equal(player.playing, false);
+  assert.equal(player.scheduler, null);
+});
+
 test("part controls can mute and restore an individual part", () => {
   const player = new MuseScorePlayer();
   player.load(score);

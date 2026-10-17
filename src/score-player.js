@@ -49,6 +49,7 @@ export class MuseScorePlayer {
     this.nodes = new Set();
     this.previewNodes = new Set();
     this.previewGeneration = 0;
+    this.playGeneration = 0;
   }
 
   load(score) {
@@ -297,7 +298,12 @@ export class MuseScorePlayer {
     if (!this.score || this.playing) {
       return;
     }
+    const score = this.score;
+    const generation = this.playGeneration;
     await this.ensureContext();
+    if (this.score !== score || this.playGeneration !== generation || this.playing) {
+      return;
+    }
     this.stopPreview(true);
 
     if (this.position >= this.score.duration - 0.03) {
@@ -315,6 +321,7 @@ export class MuseScorePlayer {
   }
 
   pause() {
+    this.playGeneration += 1;
     if (!this.playing) {
       return;
     }
@@ -354,6 +361,7 @@ export class MuseScorePlayer {
   }
 
   stop() {
+    this.playGeneration += 1;
     this.stopPreview(true);
     const wasPlaying = this.playing;
     this.playing = false;
