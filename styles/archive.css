@@ -46,7 +46,7 @@ img { display: block; max-width: 100%; }
 .site-nav a { color: #56645a; font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: color .2s; }
 .site-nav a:hover, .site-nav a:focus-visible { color: #a06d48; }
 .header-aside { justify-self: end; color: #8b9186; font-family: "Playfair Display", Georgia, serif; font-size: 13px; font-style: italic; }
-.hero { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: center; gap: clamp(35px, 5vw, 88px); min-height: 640px; padding-top: 60px; padding-bottom: 90px; }
+.hero { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: center; gap: clamp(35px, 5vw, 88px); min-height: 640px; padding-top: 60px; padding-bottom: 72px; }
 .hero-copy { position: relative; padding-bottom: 10px; }
 .eyebrow, .section-kicker, .group-label { color: #937b60; font-size: 10px; font-weight: 700; letter-spacing: .19em; }
 .eyebrow { display: flex; align-items: center; gap: 12px; margin: 0 0 27px; }
@@ -64,7 +64,7 @@ img { display: block; max-width: 100%; }
 .hero-figure img { width: 100%; aspect-ratio: 1.26; object-fit: cover; }
 .hero-figure figcaption { display: flex; justify-content: space-between; gap: 15px; padding: 15px 5px 16px; color: #746f62; font-size: 9px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
 .hero-doodle { position: absolute; top: -38px; right: -15px; color: #9fae91; font-family: Georgia, serif; font-size: 59px; transform: rotate(-9deg); }
-.about-section, .history-section, .gallery-section { border-top: 1px solid var(--line); padding-top: 83px; padding-bottom: 105px; }
+.about-section, .history-section, .gallery-section { border-top: 1px solid var(--line); padding-top: 72px; padding-bottom: 76px; }
 .about-section { display: grid; grid-template-columns: 1fr .75fr; gap: 12%; }
 .section-heading h2 { margin-top: 21px; font-size: clamp(43px, 5vw, 69px); line-height: 1.17; }
 .section-heading > p { margin: 18px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
@@ -95,8 +95,7 @@ img { display: block; max-width: 100%; }
 .song-list a { flex: 0 0 auto; color: #56745d; font-size: 12px; font-weight: 700; text-decoration: none; }
 .song-list a:hover { text-decoration: underline; }
 .ensemble-card { grid-column: 1 / -1; background: #e9eee4; }
-.ensemble-card .team-details { padding-block: 32px 34px; }
-.ensemble-card .song-list { max-width: 670px; }
+.ensemble-card .team-details { padding-block: 27px 30px; }
 .gallery-heading { margin-bottom: 42px; }
 .gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17px; }
 .gallery-card { position: relative; display: block; overflow: hidden; padding: 0; border: 0; background: #d8d0be; cursor: pointer; text-align: left; }
@@ -107,7 +106,7 @@ img { display: block; max-width: 100%; }
 .gallery-card-label { position: absolute; z-index: 1; right: 21px; bottom: 20px; left: 21px; display: grid; gap: 6px; color: white; }
 .gallery-card-label small { font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 .gallery-card-label strong { font-family: "Playfair Display", Georgia, serif; font-size: clamp(18px, 2vw, 26px); font-weight: 500; line-height: 1.15; }
-.practice-section { padding: 86px 0 100px; background: #ebece4; }
+.practice-section { padding: 72px 0 82px; background: #ebece4; }
 .practice-heading { display: flex; justify-content: space-between; align-items: end; gap: 25px; margin-bottom: 39px; }
 .practice-heading p { margin-bottom: 8px; }
 .app-shell { display: flex; width: min(100% - 64px, 1240px); min-height: 0; gap: 20px; margin: 0 auto; padding: 0; }
@@ -177,13 +176,13 @@ img { display: block; max-width: 100%; }
   .site-brand { width: 114px; }
   .site-nav { justify-content: space-between; gap: 10px; overflow-x: auto; padding-top: 8px; }
   .site-nav a { font-size: 12px; }
-  .hero { grid-template-columns: 1fr; gap: 34px; padding-top: 58px; padding-bottom: 68px; }
+  .hero { grid-template-columns: 1fr; gap: 34px; padding-top: 58px; padding-bottom: 54px; }
   .hero h1 { font-size: clamp(55px, 12vw, 80px); }
   .hero-intro { margin-top: 21px; font-size: 14px; }
   .hero-footnote { display: none; }
   .hero-figure { max-width: 570px; }
   .hero-doodle { right: 1px; }
-  .about-section, .history-section, .gallery-section { padding-top: 66px; padding-bottom: 72px; }
+  .about-section, .history-section, .gallery-section { padding-top: 55px; padding-bottom: 54px; }
   .about-section { grid-template-columns: 1fr; gap: 15px; }
   .about-copy { padding-top: 0; }
   .section-heading h2 { font-size: clamp(39px, 9vw, 57px); }
@@ -194,7 +193,7 @@ img { display: block; max-width: 100%; }
   .gallery-card img { aspect-ratio: 1; }
   .gallery-card-label { right: 12px; bottom: 12px; left: 12px; }
   .gallery-card-label strong { font-size: 17px; }
-  .practice-section { padding: 67px 0 70px; }
+  .practice-section { padding: 55px 0 65px; }
   .tool-topbar { align-items: stretch; flex-direction: column; }
   .mode-switch { width: 100%; }
   .topbar-actions { align-self: flex-start; }
