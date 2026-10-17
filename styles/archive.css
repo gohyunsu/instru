@@ -40,9 +40,8 @@ img { display: block; max-width: 100%; }
   align-items: center; gap: 20px; min-height: 80px; padding: 0 max(32px, calc((100vw - 1240px)/2));
   border-bottom: 1px solid var(--line); background: var(--bg);
 }
-.site-brand { display: inline-flex; align-items: center; gap: 11px; width: fit-content; text-decoration: none; font-family: "Playfair Display", Georgia, serif; font-size: 28px; font-weight: 600; letter-spacing: -.055em; }
-.brand-flower { color: #a57d58; font-family: Georgia, serif; font-size: 31px; font-weight: 400; line-height: 1; }
-.brand-period { color: #ad825d; }
+.site-brand { display: inline-flex; align-items: center; width: 126px; text-decoration: none; }
+.site-brand img { width: 100%; height: auto; }
 .site-nav { display: flex; gap: clamp(19px, 2.8vw, 43px); align-items: center; }
 .site-nav a { color: #56645a; font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: color .2s; }
 .site-nav a:hover, .site-nav a:focus-visible { color: #a06d48; }
@@ -143,7 +142,7 @@ img { display: block; max-width: 100%; }
 .pitch-letter { font-size: clamp(68px, 7vw, 94px); }
 .note-button { touch-action: none; user-select: none; }
 .site-footer { display: flex; justify-content: space-between; align-items: center; gap: 20px; width: min(100% - 64px, 1240px); min-height: 108px; margin: 0 auto; padding: 25px 0; color: #67746a; text-align: left; white-space: normal; }
-.site-footer > span { color: var(--ink); font-family: "Playfair Display", Georgia, serif; font-size: 29px; font-weight: 600; letter-spacing: -.06em; }
+.footer-mark { width: 132px; height: auto; flex: none; }
 .site-footer p { margin: 0; font-size: 12px; }
 .site-footer a { font-size: 12px; font-weight: 700; text-decoration: none; }
 .gallery-dialog { width: min(100% - 34px, 920px); max-width: none; max-height: min(92vh, 1050px); padding: 0; border: 0; background: #fbf9f3; box-shadow: 0 25px 80px #1d2b2455; }
@@ -175,8 +174,7 @@ img { display: block; max-width: 100%; }
 @media (max-width: 700px) {
   .section-wrap, .app-shell, .site-footer { width: min(100% - 36px, 560px); }
   .site-header { grid-template-columns: 1fr; gap: 0; min-height: 101px; padding: 11px 18px 12px; }
-  .site-brand { font-size: 24px; }
-  .brand-flower { font-size: 26px; }
+  .site-brand { width: 114px; }
   .site-nav { justify-content: space-between; gap: 10px; overflow-x: auto; padding-top: 8px; }
   .site-nav a { font-size: 12px; }
   .hero { grid-template-columns: 1fr; gap: 34px; padding-top: 58px; padding-bottom: 68px; }

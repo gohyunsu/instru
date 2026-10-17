@@ -12,6 +12,7 @@ const publicPaths = [
   "favicon.svg",
   "styles",
   "src",
+  "assets/brand",
   "assets/illustrations",
 ];
 
