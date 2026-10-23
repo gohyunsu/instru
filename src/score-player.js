@@ -382,15 +382,14 @@ export class MuseScorePlayer {
       return;
     }
     this.stopPreview(true);
-    const wasPlaying = this.playing;
-    if (wasPlaying) {
-      this.pause();
-    }
     this.position = clamp(position, 0, this.score.duration);
     this.nextEventIndex = this.findEventIndex(this.position);
-    this.onProgress(this.position, this.score.duration);
-    if (wasPlaying) {
-      this.play();
+    if (this.playing) {
+      this.startedAt = this.context.currentTime - this.position;
+      this.stopNodes();
+      this.scheduleUpcoming();
+    } else {
+      this.onProgress(this.position, this.score.duration);
     }
   }
 

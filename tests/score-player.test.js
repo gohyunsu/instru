@@ -59,6 +59,32 @@ test("loads all parts enabled and seeks to a requested position", () => {
   assert.equal(progress.at(-1), 4.25);
 });
 
+test("seeking during playback keeps transport active and schedules the new position", () => {
+  const states = [];
+  const progress = [];
+  const scheduled = [];
+  const player = new MuseScorePlayer({
+    onStateChange: (playing) => states.push(playing),
+    onProgress: (position) => progress.push(position),
+  });
+  player.load(score);
+  player.context = { currentTime: 12 };
+  player.playing = true;
+  player.startedAt = 11;
+  player.scheduler = 12345;
+  player.stopNodes = () => {};
+  player.scheduleNote = (event, position) => scheduled.push([event.partId, position]);
+
+  player.seek(4.25);
+
+  assert.equal(player.playing, true);
+  assert.equal(player.scheduler, 12345);
+  assert.equal(player.currentPosition(), 4.25);
+  assert.deepEqual(states, []);
+  assert.deepEqual(scheduled, [["bass", 4.25]]);
+  assert.equal(progress.at(-1), 4.25);
+});
+
 test("pause cancels a playback start still waiting for audio context", async () => {
   const player = new MuseScorePlayer();
   player.load(score);

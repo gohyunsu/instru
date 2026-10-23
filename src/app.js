@@ -19,7 +19,7 @@ import { LiveScoreNotation } from "./score-notation.js?v=hold-1";
 import {
   decibelsToGain,
   MuseScorePlayer,
-} from "./score-player.js?v=media-1";
+} from "./score-player.js?v=seek-1";
 import { scoreDisplayTitle } from "./score-titles.js";
 import { preferredNotationPart } from "./score-preferences.js";
 
@@ -1196,7 +1196,6 @@ elements.scoreProgress.addEventListener("change", () => {
   state.scrubbing = false;
 });
 elements.scoreProgress.addEventListener("pointerup", () => {
-  scorePlayer.seek(Number(elements.scoreProgress.value));
   state.scrubbing = false;
 });
 elements.scoreMeasureInput.addEventListener("change", jumpToMeasure);
