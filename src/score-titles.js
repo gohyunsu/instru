@@ -8,6 +8,7 @@ const PUBLIC_TITLES = new Map([
   ["dream", "Dream"],
   ["dumdi-dumdi", "DUMDi DUMDi"],
   ["heal-the-world", "Heal The World"],
+  ["java-jive", "Java Jive"],
   ["love-yourself", "Love Yourself"],
   ["payphone", "Payphone"],
   ["spring-day", "Spring Day"],

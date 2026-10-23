@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-14T14:14:44.724Z",
+  "generatedAt": "2026-10-23T11:46:30.666Z",
   "scores": [
     {
       "name": "A Sky Full of Stars",
@@ -63,6 +63,13 @@
       "path": "assets/scores/heal-the-world.mscz",
       "format": "mscz",
       "size": 277996
+    },
+    {
+      "name": "Java Jive",
+      "fileName": "java-jive.mscz",
+      "path": "assets/scores/java-jive.mscz",
+      "format": "mscz",
+      "size": 159035
     },
     {
       "name": "Love Yourself",
