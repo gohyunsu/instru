@@ -85,6 +85,31 @@ test("seeking during playback keeps transport active and schedules the new posit
   assert.equal(progress.at(-1), 4.25);
 });
 
+test("seeking into a long note still plays it after shorter notes have ended", () => {
+  const player = new MuseScorePlayer();
+  player.load({
+    ...score,
+    duration: 10,
+    events: [
+      { partId: "soprano", startSeconds: 0, durationSeconds: 8 },
+      { partId: "bass", startSeconds: 1, durationSeconds: 1 },
+      { partId: "bass", startSeconds: 6, durationSeconds: 1 },
+    ],
+  });
+  player.context = { currentTime: 12 };
+  player.playing = true;
+  player.startedAt = 11;
+  player.stopNodes = () => {};
+  const scheduled = [];
+  player.scheduleNote = (event) => scheduled.push(event.partId);
+
+  assert.equal(player.findEventIndex(3), 0);
+  player.seek(3);
+
+  assert.equal(player.nextEventIndex, 2);
+  assert.ok(scheduled.includes("soprano"));
+});
+
 test("pause cancels a playback start still waiting for audio context", async () => {
   const player = new MuseScorePlayer();
   player.load(score);
@@ -111,6 +136,43 @@ test("part controls can mute and restore an individual part", () => {
 
   player.setPartEnabled("bass", true);
   assert.equal(player.enabledParts.has("bass"), true);
+});
+
+test("changing one part during playback leaves other parts sounding", () => {
+  const player = new MuseScorePlayer();
+  player.load({
+    ...score,
+    events: [
+      { partId: "soprano", startSeconds: 0, durationSeconds: 6 },
+      { partId: "bass", startSeconds: 3, durationSeconds: 2 },
+      { partId: "soprano", startSeconds: 7, durationSeconds: 1 },
+    ],
+  });
+  player.context = { currentTime: 14 };
+  player.playing = true;
+  player.startedAt = 10;
+  player.nextEventIndex = 2;
+  const stopped = [];
+  const scheduled = [];
+  const sopranoNode = { partId: "soprano", oscillator: { stop: () => stopped.push("soprano") } };
+  const bassNode = { partId: "bass", oscillator: { stop: () => stopped.push("bass") } };
+  player.nodes.add(sopranoNode);
+  player.nodes.add(bassNode);
+  player.scheduleNote = (event) => scheduled.push(event.partId);
+
+  player.setPartEnabled("bass", false);
+  assert.deepEqual(stopped, ["bass"]);
+  assert.equal(player.nodes.has(sopranoNode), true);
+  assert.deepEqual(scheduled, []);
+
+  player.setPartEnabled("bass", true);
+  assert.deepEqual(stopped, ["bass"]);
+  assert.deepEqual(scheduled, ["bass"]);
+  assert.equal(player.playing, true);
+  assert.equal(player.nextEventIndex, 2);
+
+  player.setPartEnabled("bass", true);
+  assert.deepEqual(scheduled, ["bass"]);
 });
 
 test("part volume can be boosted and is clamped to a safe range", () => {

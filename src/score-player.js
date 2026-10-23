@@ -144,11 +144,12 @@ export class MuseScorePlayer {
       }
     }
 
-    while (
-      low > 0 &&
-      events[low - 1].startSeconds + events[low - 1].durationSeconds > position
-    ) {
-      low -= 1;
+    // A long note can outlast shorter notes that began after it. Check every
+    // earlier event so seeking into its sustain does not silently skip it.
+    for (let index = low - 1; index >= 0; index -= 1) {
+      if (events[index].startSeconds + events[index].durationSeconds > position) {
+        low = index;
+      }
     }
     return low;
   }
@@ -394,6 +395,10 @@ export class MuseScorePlayer {
   }
 
   setPartEnabled(partId, enabled) {
+    if (this.enabledParts.has(partId) === enabled) {
+      return;
+    }
+
     if (enabled) {
       this.enabledParts.add(partId);
     } else {
@@ -404,10 +409,17 @@ export class MuseScorePlayer {
       }
     }
 
-    if (this.playing) {
+    if (this.playing && enabled) {
       const position = this.currentPosition();
-      this.stopNodes();
-      this.nextEventIndex = this.findEventIndex(position);
+      const contextNow = this.context.currentTime;
+      // The scheduler may have passed notes in its lookahead window while
+      // this part was muted. Restore only those notes; leave other parts alone.
+      for (let index = 0; index < this.nextEventIndex; index += 1) {
+        const event = this.score.events[index];
+        if (event.partId === partId) {
+          this.scheduleNote(event, position, contextNow);
+        }
+      }
       this.scheduleUpcoming();
     }
   }

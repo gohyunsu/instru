@@ -19,7 +19,7 @@ import { LiveScoreNotation } from "./score-notation.js?v=hold-1";
 import {
   decibelsToGain,
   MuseScorePlayer,
-} from "./score-player.js?v=seek-1";
+} from "./score-player.js?v=playback-2";
 import { scoreDisplayTitle } from "./score-titles.js";
 import { preferredNotationPart } from "./score-preferences.js";
 
