@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-23T11:46:30.666Z",
+  "generatedAt": "2026-10-30T09:08:50.304Z",
   "scores": [
     {
       "name": "A Sky Full of Stars",
@@ -104,7 +104,7 @@
       "fileName": "traffic-light.mscz",
       "path": "assets/scores/traffic-light.mscz",
       "format": "mscz",
-      "size": 75015
+      "size": 611738
     }
   ]
 }
