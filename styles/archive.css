@@ -198,6 +198,7 @@ img { display: block; max-width: 100%; }
   .mode-switch { width: 100%; }
   .topbar-actions { align-self: flex-start; }
   .score-view, .tuner-view { display: grid; grid-template-columns: 1fr; }
+  .library-search { max-width: none; }
   .score-player-panel, .score-message, .pitch-summary, .pitch-graph, .reference-section { grid-column: 1; grid-row: auto; }
   .library-list, .part-list { grid-template-columns: 1fr; }
   .part-mixer .section-label > span { width: 100%; text-align: left; }

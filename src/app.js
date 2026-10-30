@@ -20,7 +20,7 @@ import {
   decibelsToGain,
   MuseScorePlayer,
 } from "./score-player.js?v=playback-2";
-import { scoreDisplayTitle } from "./score-titles.js";
+import { scoreDisplayTitle, scoreMatchesSearch } from "./score-titles.js?v=search-1";
 import { preferredNotationPart } from "./score-preferences.js";
 
 const PART_VOLUME_MIN_DB = -15;
@@ -65,6 +65,7 @@ const elements = {
   helperMessage: document.querySelector("#helperMessage"),
   scoreLibrary: document.querySelector(".score-library"),
   libraryCount: document.querySelector("#libraryCount"),
+  librarySearch: document.querySelector("#librarySearch"),
   libraryList: document.querySelector("#libraryList"),
   scoreImport: document.querySelector("#scoreImport"),
   scoreFileInput: document.querySelector("#scoreFileInput"),
@@ -112,6 +113,8 @@ const state = {
   scrubbing: false,
   selectedPartId: null,
 };
+let libraryScores = [];
+let libraryStatus = "loading";
 
 const audioEngine = new PitchAudioEngine(
   handleAudioMeasurement,
@@ -940,21 +943,35 @@ async function handleLocalFile(file) {
   await loadScoreBytes(await file.arrayBuffer(), file.name);
 }
 
-function renderLibrary(scores) {
+function renderLibrary() {
   elements.libraryList.replaceChildren();
-  elements.libraryCount.textContent = scores.length
-    ? String(scores.length)
-    : "Empty";
+  const query = elements.librarySearch.value;
+  const matches = libraryScores.filter((score) => scoreMatchesSearch(score, query));
+  elements.libraryCount.textContent = libraryStatus === "loading"
+    ? "Loading"
+    : libraryStatus === "error"
+      ? "Unavailable"
+      : !libraryScores.length
+        ? "Empty"
+        : query.trim()
+          ? `${matches.length} / ${libraryScores.length}`
+          : String(libraryScores.length);
 
-  if (!scores.length) {
+  if (libraryStatus !== "ready" || !matches.length) {
     const message = document.createElement("p");
     message.className = "library-empty";
-    message.textContent = "No scores yet. Choose a MuseScore file to begin.";
+    message.textContent = libraryStatus === "loading"
+      ? "Loading scores…"
+      : libraryStatus === "error"
+        ? "Could not load the score library."
+        : !libraryScores.length
+          ? "No scores yet. Choose a MuseScore file to begin."
+          : "No matching scores.";
     elements.libraryList.append(message);
     return;
   }
 
-  const orderedScores = [...scores].sort((left, right) => {
+  const orderedScores = [...matches].sort((left, right) => {
     const leftRank = practiceRank(left);
     const rightRank = practiceRank(right);
     return (leftRank < 0 ? PRACTICE_SCORE_SLUGS.length : leftRank) -
@@ -1018,11 +1035,12 @@ async function loadScoreLibrary() {
       throw new Error("MANIFEST_NOT_FOUND");
     }
     const manifest = await response.json();
-    renderLibrary(Array.isArray(manifest.scores) ? manifest.scores : []);
+    libraryScores = Array.isArray(manifest.scores) ? manifest.scores : [];
+    libraryStatus = "ready";
   } catch {
-    elements.libraryCount.textContent = "Unavailable";
-    renderLibrary([]);
+    libraryStatus = "error";
   }
+  renderLibrary();
 }
 
 function resetScoreSelection() {
@@ -1249,4 +1267,5 @@ window.addEventListener("pageshow", () => {
 
 updateReferenceButtons();
 resetPitchSummary();
+elements.librarySearch.addEventListener("input", renderLibrary);
 loadScoreLibrary();
