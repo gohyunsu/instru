@@ -262,9 +262,12 @@ button, input { font-family: inherit; }
 }
 .piano-heading h1 { font: 700 clamp(30px, 4vw, 42px) var(--display); letter-spacing: -.05em; }
 .piano-viewport { border-color: #1b252b; background: #1b252b; }
+.piano-key-white { border-color: #c9d1d4; background: linear-gradient(90deg, #e5eaec, #fff 18% 84%, #e4e9eb); }
+.piano-key-label { color: #687980; }
 .piano-key-black { border-color: #10191e; background: linear-gradient(90deg, #111b21, #34424b 48%, #172128); }
 .piano-key-black:hover, .piano-key-black.is-down { background: linear-gradient(90deg, #3146bb, #6272ec 48%, #3349c6); }
 .piano-key-white:hover, .piano-key-white.is-down { background: linear-gradient(90deg, #d7dcff, #edf0ff 30% 80%, #cdd5ff); }
+.piano-map-key { border-right-color: #cbd3d5; background: #eff2f2; }
 .piano-map-key.is-c { background: #e3e6ff; }
 .piano-range-selection { background: rgba(68, 89, 223, .16); }
 .tuning-meter { background: linear-gradient(90deg, #b9c9d5 0%, #e5e9ef 32%, #cfdbff 39% 61%, #e5e9ef 68%, #d5b9ad 100%); }
@@ -292,9 +295,11 @@ button, input { font-family: inherit; }
 }
 
 @media (orientation: portrait) {
+  .piano-key-white { background: linear-gradient(#e5eaec, #fff 18% 84%, #e4e9eb); }
   .piano-key-black { background: linear-gradient(#111b21, #34424b 48%, #172128); }
   .piano-key-black:hover, .piano-key-black.is-down { background: linear-gradient(#3146bb, #6272ec 48%, #3349c6); }
   .piano-key-white:hover, .piano-key-white.is-down { background: linear-gradient(#d7dcff, #edf0ff 30% 80%, #cdd5ff); }
+  .piano-map-key { border-top-color: #cbd3d5; }
 }
 
 @media (max-width: 700px) {
