@@ -22,6 +22,7 @@ import {
 } from "./score-player.js?v=playback-2";
 import { scoreDisplayTitle, scoreMatchesSearch } from "./score-titles.js?v=search-1";
 import { preferredNotationPart } from "./score-preferences.js";
+import { normalizeScoreParts } from "./score-part-names.js";
 
 const PART_VOLUME_MIN_DB = -15;
 const PART_VOLUME_MAX_DB = 10;
@@ -846,7 +847,11 @@ function bindPartControl(button, part, input, output) {
   });
 }
 
-function renderScore(score) {
+function renderScore(parsedScore) {
+  const score = {
+    ...parsedScore,
+    parts: normalizeScoreParts(parsedScore.parts, parsedScore.sourceName),
+  };
   state.score = score;
   state.selectedPartId = null;
   configureMeasureNavigation(score);

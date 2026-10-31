@@ -194,10 +194,17 @@ dialog.querySelector(".dialog-image-wrap").addEventListener("pointercancel", () 
 });
 
 const progressLine = document.querySelector(".reading-progress");
+const siteHeader = document.querySelector(".site-header");
+const siteBrand = siteHeader.querySelector(".site-brand");
+const mobileHeader = window.matchMedia("(max-width: 700px)");
 const sectionLinks = [...document.querySelectorAll('.site-nav a[href^="#"]')];
 let scrollUpdatePending = false;
 function updatePageChrome() {
   scrollUpdatePending = false;
+  const compactHeader = mobileHeader.matches && window.scrollY >
+    (siteHeader.classList.contains("is-compact") ? 40 : 140);
+  siteHeader.classList.toggle("is-compact", compactHeader);
+  siteBrand.inert = compactHeader;
   const scrollable = document.documentElement.scrollHeight - window.innerHeight;
   progressLine.style.setProperty("--reading-progress", String(
     scrollable > 0 ? Math.min(1, window.scrollY / scrollable) : 0,
