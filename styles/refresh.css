@@ -212,6 +212,17 @@ button, input { font-family: inherit; }
   border-radius: 22px;
   background: #f9faf8;
 }
+.piano-heading h1 { font: 700 clamp(30px, 4vw, 42px) var(--display); letter-spacing: -.05em; }
+.piano-viewport { border-color: #1b252b; background: #1b252b; }
+.piano-key-black { border-color: #10191e; background: linear-gradient(90deg, #111b21, #34424b 48%, #172128); }
+.piano-key-black:hover, .piano-key-black.is-down { background: linear-gradient(90deg, #3146bb, #6272ec 48%, #3349c6); }
+.piano-key-white:hover, .piano-key-white.is-down { background: linear-gradient(90deg, #d7dcff, #edf0ff 30% 80%, #cdd5ff); }
+.piano-map-key.is-c { background: #e3e6ff; }
+.piano-range-selection { background: rgba(68, 89, 223, .16); }
+.tuning-meter { background: linear-gradient(90deg, #b9c9d5 0%, #e5e9ef 32%, #cfdbff 39% 61%, #e5e9ef 68%, #d5b9ad 100%); }
+.meter-band { border-color: var(--accent); }
+.meter-zero { background: var(--accent); }
+.notation-meter { fill: var(--accent); }
 .library-item { border-radius: 14px; }
 .library-item:hover { border-color: var(--accent-line); background: #f5f6ff; }
 .library-search { border-radius: 14px; }
@@ -230,6 +241,12 @@ button, input { font-family: inherit; }
   .hero-figure { width: min(100% - 20px, 760px); }
   .about-section { grid-template-columns: 1fr; gap: 12px; }
   .about-copy { max-width: 650px; padding-top: 8px; }
+}
+
+@media (orientation: portrait) {
+  .piano-key-black { background: linear-gradient(#111b21, #34424b 48%, #172128); }
+  .piano-key-black:hover, .piano-key-black.is-down { background: linear-gradient(#3146bb, #6272ec 48%, #3349c6); }
+  .piano-key-white:hover, .piano-key-white.is-down { background: linear-gradient(#d7dcff, #edf0ff 30% 80%, #cdd5ff); }
 }
 
 @media (max-width: 700px) {
