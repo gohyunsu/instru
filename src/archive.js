@@ -75,6 +75,23 @@ function makeCarousel(host, names, label) {
     current = (current + 1) % names.length;
     update();
   });
+  if (names.length > 1) {
+    let touchStart = null;
+    host.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "touch") touchStart = [event.clientX, event.clientY];
+    });
+    host.addEventListener("pointerup", (event) => {
+      if (!touchStart) return;
+      const [startX, startY] = touchStart;
+      touchStart = null;
+      const deltaX = event.clientX - startX;
+      if (Math.abs(deltaX) > 45 && Math.abs(event.clientY - startY) < 55) {
+        current = (current + (deltaX < 0 ? 1 : -1) + names.length) % names.length;
+        update();
+      }
+    });
+    host.addEventListener("pointercancel", () => { touchStart = null; });
+  }
   host.append(picture);
   if (names.length > 1) host.append(previous, next, counter);
   update();
@@ -156,3 +173,55 @@ dialog.addEventListener("keydown", (event) => {
     showDialogImage();
   }
 });
+
+let dialogTouchStart = null;
+dialog.querySelector(".dialog-image-wrap").addEventListener("pointerdown", (event) => {
+  if (event.pointerType === "touch") dialogTouchStart = [event.clientX, event.clientY];
+});
+dialog.querySelector(".dialog-image-wrap").addEventListener("pointerup", (event) => {
+  if (!dialogTouchStart) return;
+  const [startX, startY] = dialogTouchStart;
+  dialogTouchStart = null;
+  if (!activeEvent || activeEvent.images.length < 2) return;
+  const deltaX = event.clientX - startX;
+  if (Math.abs(deltaX) > 45 && Math.abs(event.clientY - startY) < 55) {
+    activeIndex = (activeIndex + (deltaX < 0 ? 1 : -1) + activeEvent.images.length) % activeEvent.images.length;
+    showDialogImage();
+  }
+});
+dialog.querySelector(".dialog-image-wrap").addEventListener("pointercancel", () => {
+  dialogTouchStart = null;
+});
+
+const progressLine = document.querySelector(".reading-progress");
+const sectionLinks = [...document.querySelectorAll('.site-nav a[href^="#"]')];
+let scrollUpdatePending = false;
+function updatePageChrome() {
+  scrollUpdatePending = false;
+  const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+  progressLine.style.setProperty("--reading-progress", String(
+    scrollable > 0 ? Math.min(1, window.scrollY / scrollable) : 0,
+  ));
+  const position = window.scrollY + window.innerHeight * 0.38;
+  let currentId = null;
+  for (const link of sectionLinks) {
+    const target = document.querySelector(link.getAttribute("href"));
+    if (target && target.getBoundingClientRect().top + window.scrollY <= position) {
+      currentId = target.id;
+    }
+  }
+  for (const link of sectionLinks) {
+    const active = link.getAttribute("href") === `#${currentId}`;
+    link.classList.toggle("is-current", active);
+    if (active) link.setAttribute("aria-current", "location");
+    else link.removeAttribute("aria-current");
+  }
+}
+function requestPageChromeUpdate() {
+  if (scrollUpdatePending) return;
+  scrollUpdatePending = true;
+  window.requestAnimationFrame(updatePageChrome);
+}
+window.addEventListener("scroll", requestPageChromeUpdate, { passive: true });
+window.addEventListener("resize", requestPageChromeUpdate);
+requestPageChromeUpdate();
