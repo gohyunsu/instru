@@ -14,6 +14,7 @@ const PUBLIC_TITLES = new Map([
   ["spring-day", "Spring Day"],
   ["the-girl-from-ipanema", "The Girl From Ipanema"],
   ["traffic-light", "Traffic Light"],
+  ["walking-down-the-street", "Walking Down the Street"],
 ]);
 
 const KOREAN_SEARCH_TERMS = new Map([

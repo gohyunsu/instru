@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-30T09:08:50.304Z",
+  "generatedAt": "2026-11-18T05:21:05.703Z",
   "scores": [
     {
       "name": "A Sky Full of Stars",
@@ -105,6 +105,13 @@
       "path": "assets/scores/traffic-light.mscz",
       "format": "mscz",
       "size": 611738
+    },
+    {
+      "name": "Walking Down the Street",
+      "fileName": "walking-down-the-street.mscz",
+      "path": "assets/scores/walking-down-the-street.mscz",
+      "format": "mscz",
+      "size": 163458
     }
   ]
 }
